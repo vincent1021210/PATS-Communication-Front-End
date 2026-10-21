@@ -46,9 +46,9 @@ var PATS_CONFIG = {
    *
    * 也可在 App「通話設定」覆寫，不必改此檔。
    *
-   * 佔位：拿到 Render 網址前請保持下一行，部署後整段換成真實 URL。
+   * Render 正式信令（Free；閒置會休眠，可 ping /health 保活）。
    */
-  signalingUrl: 'https://YOUR-SERVICE.onrender.com',
+  signalingUrl: 'https://pats-communication-front-end.onrender.com',
 
   /**
    * STUN／TURN。同網段通常只要 Google STUN。
