@@ -385,8 +385,9 @@ var PatsChat = (function () {
       .then(function (list) {
         if (state.view !== scope) return;
         loadedScope = scope;
+        var keptActive = findInboxRow_(state.activeId);
         inbox = list || [];
-        return restoreActiveIfArchived_(options);
+        return restoreActiveIfArchived_(options, keptActive);
       })
       .catch(function (err) {
         if (options && options.quiet) return;
@@ -395,28 +396,55 @@ var PatsChat = (function () {
   }
 
   /** 對話已開啟卻不在目前列表時，檢查是否被自動封存並移回。 */
-  function restoreActiveIfArchived_(options) {
+  function restoreActiveIfArchived_(options, keptActive) {
     var activeId = state.activeId;
     if (!activeId || state.view === 'archive') {
       return publishList(options);
     }
-    for (var i = 0; i < inbox.length; i++) {
-      if (inbox[i].id === activeId) return publishList(options);
-    }
+    if (findInboxRow_(activeId)) return publishList(options);
     return PATS.rpc('listConversations', { scope: 'archive' })
       .then(function (archived) {
-        var found = false;
+        var hit = null;
         for (var j = 0; j < (archived || []).length; j++) {
-          if (archived[j].id === activeId) { found = true; break; }
+          if (archived[j].id === activeId) { hit = archived[j]; break; }
         }
-        if (!found) return publishList(options);
-        return PATS.rpc('setArchived', { conversationId: activeId, archived: false })
-          .then(function () {
-            PATS.toast('對話曾在「封存」，已自動移回列表。', 'success');
-            return refreshList(options);
+        if (hit) {
+          return PATS.rpc('setArchived', { conversationId: activeId, archived: false })
+            .then(function () {
+              PATS.toast('對話曾在「封存」，已自動移回列表。', 'success');
+              return refreshList(options);
+            });
+        }
+        // 後端列表仍漏掉時，保留畫面上已開啟的那一筆，避免被輪詢清空
+        if (keptActive) {
+          inbox.unshift(keptActive);
+          return publishList(options);
+        }
+        var titleEl = $('.chat-head .title');
+        if (state.activeId) {
+          upsertInboxFromConversation_({
+            conversation: {
+              id: state.activeId,
+              type: state.activeType || 'dm',
+              title: (titleEl && titleEl.textContent) || '對話',
+              avatarUrl: '',
+              memberCount: 0
+            },
+            messages: state.messages || []
           });
+          return;
+        }
+        return publishList(options);
       })
       .catch(function () { return publishList(options); });
+  }
+
+  function findInboxRow_(id) {
+    if (!id) return null;
+    for (var i = 0; i < inbox.length; i++) {
+      if (inbox[i].id === id) return inbox[i];
+    }
+    return null;
   }
 
   function openConversation(conversationId) {
@@ -434,11 +462,52 @@ var PatsChat = (function () {
         state.lastMessageAt = data.messages.length
           ? data.messages[data.messages.length - 1].createdAt
           : null;
+        upsertInboxFromConversation_(data);
         renderConversation(data);
         return PATS.rpc('markRead', { conversationId: conversationId });
       })
       .then(function () { refreshBadgesOnly(); })
       .catch(handleError);
+  }
+
+  /** 後端列表漏掉時，用已開啟的對話補進左側，避免「右邊有人、左邊沒朋友」。 */
+  function upsertInboxFromConversation_(data) {
+    var conv = data && data.conversation;
+    if (!conv || !conv.id) return;
+    var preview = '';
+    var lastAt = conv.lastMessageAt || '';
+    var messages = data.messages || [];
+    if (messages.length) {
+      var last = messages[messages.length - 1];
+      preview = last.kind === 'system'
+        ? last.body
+        : ((last.mine ? '你' : (last.senderName || '')) + (last.body ? '：' + last.body : ''));
+      lastAt = last.createdAt || lastAt;
+    }
+    var row = {
+      id: conv.id,
+      type: conv.type === 'group' ? 'group' : 'dm',
+      title: conv.title || '對話',
+      avatarUrl: conv.avatarUrl || '',
+      memberCount: conv.memberCount || 0,
+      archived: false,
+      lastMessageAt: lastAt || new Date().toISOString(),
+      preview: preview || '尚無訊息',
+      unread: 0
+    };
+    var found = false;
+    for (var i = 0; i < inbox.length; i++) {
+      if (inbox[i].id !== row.id) continue;
+      inbox[i] = Object.assign({}, inbox[i], row);
+      found = true;
+      break;
+    }
+    if (!found) inbox.unshift(row);
+    if (row.type === 'group' && state.view === 'dm') {
+      // 群組開在私訊頁時仍先顯示於列表，避免以為沒建立成功
+    }
+    listSignature = '';
+    publishList();
   }
 
   function refreshBadgesOnly() {
@@ -456,7 +525,20 @@ var PatsChat = (function () {
     for (var i = 0; i < inbox.length; i++) {
       if (inbox[i].id === conversationId) { conv = inbox[i]; break; }
     }
-    if (!conv) return;
+    if (!conv) {
+      conv = {
+        id: conversationId,
+        type: state.activeType === 'group' ? 'group' : 'dm',
+        title: '對話',
+        avatarUrl: '',
+        memberCount: 0,
+        archived: false,
+        preview: '',
+        unread: 0,
+        lastMessageAt: createdAt
+      };
+      inbox.unshift(conv);
+    }
     var name = state.user && (state.user.displayName || state.user.username);
     conv.preview = name ? name + '：' + body : body;
     conv.lastMessageAt = createdAt;

@@ -117,16 +117,19 @@ function apiListConversations_(user, payload) {
       var archived = String(me.archived) === 'true' || me.archived === true;
       if (scope === 'archive') return archived;
       if (archived) return false;
-      return scope === 'group' ? conv.type === 'group' : conv.type === 'dm';
+      // 非 group 一律當私訊（避免 type 空白／舊資料導致有對話卻不出現在列表）
+      var isGroup = String(conv.type || '').toLowerCase() === 'group';
+      return scope === 'group' ? isGroup : !isGroup;
     })
     .map(function (conv) {
       var members = participantsByConv[conv.id] || [];
       var me = byConv[conv.id];
       var last = indexed.latest[conv.id];
       var lastReadAt = me.lastReadAt ? timeMs_(me.lastReadAt) : 0;
+      var normalizedType = String(conv.type || '').toLowerCase() === 'group' ? 'group' : 'dm';
       return {
         id: conv.id,
-        type: conv.type,
+        type: normalizedType,
         title: conversationTitle_(conv, members, users, user.id),
         avatarUrl: conversationAvatar_(conv, members, users, user.id),
         memberCount: members.length,
@@ -250,11 +253,17 @@ function apiListMessages_(user, payload) {
   if (payload.since) return { messages: rows };
 
   var conv = dbGet_('conversations', conversationId);
+  if (!conv) throw new Error('CONVERSATION_NOT_FOUND');
   var members = participantsOf_(conversationId);
+  var normalizedType = String(conv.type || '').toLowerCase() === 'group' ? 'group' : 'dm';
+  if (String(conv.type || '') !== normalizedType) {
+    dbUpdate_('conversations', conversationId, { type: normalizedType });
+    conv.type = normalizedType;
+  }
   return {
     conversation: {
       id: conversationId,
-      type: conv.type,
+      type: normalizedType,
       title: conversationTitle_(conv, members, users, user.id),
       avatarUrl: conversationAvatar_(conv, members, users, user.id),
       memberCount: members.length,
