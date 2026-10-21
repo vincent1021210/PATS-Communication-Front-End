@@ -162,9 +162,21 @@ function liveMessages_() {
   });
 }
 
-function timeMs_(iso) {
-  if (!iso) return 0;
-  var t = new Date(iso).getTime();
+function timeMs_(value) {
+  if (value === null || value === undefined || value === '') return 0;
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    var dateMs = value.getTime();
+    return isNaN(dateMs) ? 0 : dateMs;
+  }
+  if (typeof value === 'number' && isFinite(value)) {
+    // 已是毫秒，或 Sheets 序列日期（約 20000～100000）
+    if (value > 1e11) return value;
+    if (value > 20000 && value < 100000) {
+      return Math.round((value - 25569) * 86400 * 1000);
+    }
+    return value;
+  }
+  var t = new Date(value).getTime();
   return isNaN(t) ? 0 : t;
 }
 
@@ -325,6 +337,16 @@ function apiStartDirect_(user, payload) {
   addParticipant_(conv.id, peer.id, 'member');
   ensureContact_(user.id, peer.id);
   ensureContact_(peer.id, user.id);
+  dbInsert_('messages', {
+    id: newId_(),
+    conversationId: conv.id,
+    senderId: user.id,
+    body: (user.displayName || user.username) + ' 開始了與 ' +
+      (peer.displayName || peer.username) + ' 的對話',
+    kind: 'system',
+    createdAt: nowIso_(),
+    deleted: 'false'
+  });
   return { conversationId: conv.id };
 }
 
@@ -494,7 +516,10 @@ function applyAutoArchive_(user) {
     if (String(p.archived) === 'true') return;
     var conv = conversations[p.conversationId];
     if (!conv) return;
-    if (timeMs_(conv.lastMessageAt || conv.createdAt) < threshold) {
+    // 時間無效時不封存，避免新建對話因解析失敗被立刻藏進「封存」
+    var stampMs = timeMs_(conv.lastMessageAt || conv.createdAt);
+    if (!stampMs) return;
+    if (stampMs < threshold) {
       pending.push({ id: p.id, patch: { archived: 'true', archivedAt: stamp } });
     }
   });

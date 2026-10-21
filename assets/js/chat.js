@@ -386,12 +386,37 @@ var PatsChat = (function () {
         if (state.view !== scope) return;
         loadedScope = scope;
         inbox = list || [];
-        return publishList(options);
+        return restoreActiveIfArchived_(options);
       })
       .catch(function (err) {
         if (options && options.quiet) return;
         handleError(err);
       });
+  }
+
+  /** 對話已開啟卻不在目前列表時，檢查是否被自動封存並移回。 */
+  function restoreActiveIfArchived_(options) {
+    var activeId = state.activeId;
+    if (!activeId || state.view === 'archive') {
+      return publishList(options);
+    }
+    for (var i = 0; i < inbox.length; i++) {
+      if (inbox[i].id === activeId) return publishList(options);
+    }
+    return PATS.rpc('listConversations', { scope: 'archive' })
+      .then(function (archived) {
+        var found = false;
+        for (var j = 0; j < (archived || []).length; j++) {
+          if (archived[j].id === activeId) { found = true; break; }
+        }
+        if (!found) return publishList(options);
+        return PATS.rpc('setArchived', { conversationId: activeId, archived: false })
+          .then(function () {
+            PATS.toast('對話曾在「封存」，已自動移回列表。', 'success');
+            return refreshList(options);
+          });
+      })
+      .catch(function () { return publishList(options); });
   }
 
   function openConversation(conversationId) {

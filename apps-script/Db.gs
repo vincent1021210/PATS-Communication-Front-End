@@ -8,6 +8,9 @@
 var DB_PROP_KEY = 'PATS_SPREADSHEET_ID';
 var DB_LOCK_TIMEOUT_MS = 20000;
 
+/** 正式「聊天室」試算表（未設指令碼屬性時使用，避免誤建空白資料庫）。 */
+var DEFAULT_CHAT_SPREADSHEET_ID = '1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0';
+
 /**
  * 資料表結構。欄位順序即工作表的欄位順序，變更後請執行 setup() 補齊。
  */
@@ -79,10 +82,14 @@ function openSpreadsheet_() {
 
 function createOrOpenSpreadsheet_() {
   var props = PropertiesService.getScriptProperties();
-  var id = props.getProperty(DB_PROP_KEY);
+  var id = props.getProperty(DB_PROP_KEY) || DEFAULT_CHAT_SPREADSHEET_ID;
   if (id) {
     try {
-      return SpreadsheetApp.openById(id);
+      var existing = SpreadsheetApp.openById(id);
+      if (!props.getProperty(DB_PROP_KEY)) {
+        props.setProperty(DB_PROP_KEY, id);
+      }
+      return existing;
     } catch (err) {
       // ID 失效時往下重新建立
     }

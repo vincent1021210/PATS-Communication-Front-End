@@ -47,7 +47,7 @@ function initializeProject() {
  * 用法：函式選單選 bindChatRoomDatabase → 執行。必要時再跑 initializeProject / setup 補齊工作表。
  */
 function bindChatRoomDatabase() {
-  var id = '1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0';
+  var id = DEFAULT_CHAT_SPREADSHEET_ID;
   PropertiesService.getScriptProperties().setProperty(DB_PROP_KEY, id);
   SS_CACHE = null;
   SHEET_CACHE = {};
@@ -61,6 +61,32 @@ function bindChatRoomDatabase() {
     '',
     '若缺表或缺欄，請再執行 initializeProject() 或 setup()。'
   ].join('\n');
+  Logger.log(report);
+  return report;
+}
+
+/**
+ * 診斷目前後端實際寫入哪一份試算表、各表有幾列（排查「有聊天但試算表沒紀錄」）。
+ */
+function diagnoseChatRoomDatabase() {
+  SS_CACHE = null;
+  SHEET_CACHE = {};
+  ROW_CACHE = {};
+  var props = PropertiesService.getScriptProperties();
+  var bound = props.getProperty(DB_PROP_KEY) || '（未設定，將用預設）';
+  var ss = openSpreadsheet_();
+  var lines = [
+    '指令碼屬性 PATS_SPREADSHEET_ID：' + bound,
+    '實際開啟：' + ss.getUrl(),
+    '試算表 ID：' + ss.getId(),
+    ''
+  ];
+  Object.keys(SCHEMA).forEach(function (name) {
+    var sheet = ss.getSheetByName(name);
+    var rows = sheet ? Math.max(0, sheet.getLastRow() - 1) : -1;
+    lines.push(name + '：' + (rows < 0 ? '（無此工作表）' : rows + ' 列資料'));
+  });
+  var report = lines.join('\n');
   Logger.log(report);
   return report;
 }
