@@ -1,0 +1,41 @@
+# PATS：Oracle Always Free — 信令(HTTPS) + Coturn(TURN)
+# 使用前請先複製 .env.example 為 .env 並填好網域、IP、TURN 密碼
+
+services:
+  signaling:
+    build:
+      context: ..
+      dockerfile: oracle-free/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "3001"
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://vincent1021210.github.io}
+    expose:
+      - "3001"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - signaling
+
+  coturn:
+    image: coturn/coturn:latest
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+
+volumes:
+  caddy_data:
+  caddy_config:

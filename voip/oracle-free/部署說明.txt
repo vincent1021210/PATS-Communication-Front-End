@@ -1,0 +1,137 @@
+PATS × Oracle Always Free（$0）部署指南
+========================================
+目標：GitHub Pages（HTTPS）也能打電話，並用 Coturn 支援跨 Wi‑Fi／4G。
+
+會跑三個服務：
+  1) signaling  — 你現有的 Node + Socket.io 信令
+  2) caddy      — 自動申請 Let's Encrypt，提供 https://你的網域
+  3) coturn     — STUN/TURN 穿透
+
+
+────────────────────────────────────────
+一、申請 Oracle Always Free 主機
+────────────────────────────────────────
+1. 到 https://cloud.oracle.com 註冊（Always Free）
+2. 建立 Compute Instance：
+   - 映像：Ubuntu 22.04 或 24.04
+   - Shape：VM.Standard.A1.Flex（ARM，Always Free）即可
+   - 記住「公網 IP」
+3. 下載 SSH 金鑰，用終端機連線：
+     ssh -i 你的金鑰.pem ubuntu@公網IP
+
+
+────────────────────────────────────────
+二、開安全清單（Security List）非常重要
+────────────────────────────────────────
+到 VCN → Security List → Ingress Rules，新增：
+
+  TCP  22          SSH
+  TCP  80          HTTP（申請憑證）
+  TCP  443         HTTPS 信令
+  UDP  3478        STUN/TURN
+  TCP  3478        STUN/TURN
+  UDP  49152-65535 TURN 媒體埠
+
+（來源可先設 0.0.0.0/0；正式環境可再收斂。）
+
+
+────────────────────────────────────────
+三、申請免費網域（DuckDNS）
+────────────────────────────────────────
+1. https://www.duckdns.org 登入，建立子網域
+   例如：pats-call → pats-call.duckdns.org
+2. 把該網域的 IP 設成 Oracle 公網 IP
+3. 之後 Let's Encrypt 會發憑證給這個網域
+
+
+────────────────────────────────────────
+四、把部署檔上傳到主機
+────────────────────────────────────────
+在「你的 Windows 開發機」專案目錄執行（PowerShell）：
+
+  scp -i 金鑰.pem -r voip ubuntu@公網IP:~/
+
+或用 Git：主機上
+  git clone https://github.com/vincent1021210/PATS-Web-page.git
+  cd PATS-Web-page/voip/oracle-free
+
+
+────────────────────────────────────────
+五、主機上一鍵安裝
+────────────────────────────────────────
+  cd ~/voip/oracle-free          # 或 git clone 後的路徑
+  chmod +x setup.sh deploy.sh
+  ./setup.sh
+
+編輯設定：
+  nano .env
+    DOMAIN=pats-call.duckdns.org      # 你的 DuckDNS
+    PUBLIC_IP=x.x.x.x                 # Oracle 公網 IP
+    CORS_ORIGIN=https://vincent1021210.github.io
+    TURN_USER=pats
+    TURN_PASS=自己想一組密碼
+
+  nano turnserver.conf
+    external-ip=x.x.x.x               # 同上公網 IP
+    user=pats:自己想一組密碼          # 與 .env 一致
+
+啟動：
+  ./deploy.sh
+
+測試：
+  curl -s https://你的網域/health
+  應看到：{"ok":true,"app":"PATS signaling",...}
+
+
+────────────────────────────────────────
+六、前端（手機／GitHub Pages）設定
+────────────────────────────────────────
+方法 A（最快，不用改程式）：
+  手機開 PATS → 左側或底部「通話設定」
+  信令網址填：https://你的網域
+  儲存並重新連線 → 應顯示「通話就緒」
+
+方法 B（寫進程式，永久預設）：
+  改 assets/js/config.js：
+    signalingUrl: 'https://你的網域',
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:你的網域:3478' },
+      {
+        urls: 'turn:你的網域:3478',
+        username: 'pats',
+        credential: '你的TURN密碼'
+      }
+    ]
+  然後 git push，強制重新整理網頁。
+
+兩邊都登入、都顯示「通話就緒」後，開私訊按綠色電話即可。
+
+
+────────────────────────────────────────
+七、常見問題
+────────────────────────────────────────
+Q. curl https://網域/health 失敗？
+   - Security List 是否開 80/443
+   - DuckDNS IP 是否正確
+   - sudo docker compose logs caddy
+
+Q. 同 Wi‑Fi 有聲、4G 沒聲？
+   - Coturn 沒通：檢查 UDP 3478 與 49152-65535
+   - turnserver.conf 的 external-ip 是否為公網 IP
+   - 前端 iceServers 是否有加上 turn:…
+
+Q. 通話就緒但對方不在線？
+   - 雙方都要連到「同一個」https 信令網址
+   - 雙方都要保持網頁開著（網頁版無法鎖屏強制響）
+
+Q. Oracle 免費額度注意
+   - Always Free ARM 有額度與閒置回收政策，請定期登入查看
+   - 流量夠一般個人／小社團使用
+
+
+────────────────────────────────────────
+八、與「LiveKit／Flutter」的關係
+────────────────────────────────────────
+本方案沿用你現有的 PATS 網頁 + Socket.io，不上 LiveKit、不做 Flutter。
+若以後要「鎖屏來電畫面」，再另開原生 App；雲端這台 Coturn／網域仍可共用。

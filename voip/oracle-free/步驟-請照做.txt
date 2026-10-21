@@ -1,0 +1,45 @@
+固定信令網址：Oracle + DuckDNS（方案 1）
+========================================
+完成後，通話設定會固定成：
+  https://你取的名字.duckdns.org
+寫進 config.js，大家永遠不用改。
+
+
+【今天請依序做】
+
+□ 1. 申請 DuckDNS（約 2 分鐘）
+   https://www.duckdns.org
+   - 用 Google 登入
+   - 新增子網域，例如：pats-vincent
+   - 得到：pats-vincent.duckdns.org
+   - IP 欄先空白，等有 Oracle 公網 IP 再填
+
+□ 2. 申請 Oracle Always Free（約 10～20 分鐘）
+   https://cloud.oracle.com
+   - 註冊／登入 → Create Compute Instance
+   - Image：Ubuntu 22.04 或 24.04
+   - Shape：選 Always Free（ARM A1 Flex 即可）
+   - 下載 SSH 私鑰（.key / .pem），保存好
+   - 建立完成後，記下「Public IP」
+
+□ 3. 開防火牆（Security List Ingress）
+   TCP 22, 80, 443
+   UDP 3478、TCP 3478
+   UDP 49152-65535
+
+□ 4. DuckDNS 把 IP 改成 Oracle 的 Public IP 並 Update
+
+□ 5. 把下面三行回覆給我（我幫你改設定並說明主機指令）：
+
+   DOMAIN=________.duckdns.org
+   PUBLIC_IP=________
+   TURN_PASS=________（自己想一組密碼）
+
+
+【你回覆後我會做】
+- 產生好的 .env / turnserver.conf 內容給你貼上
+- 改 config.js 的 signalingUrl 為 https://你的DOMAIN 並推 GitHub
+- 給你主機上一鍵執行的指令清單
+
+
+完整細節仍見：部署說明.txt

@@ -1,0 +1,65 @@
+PATS 地端架設（Windows + Docker）
+================================
+
+回答你的兩個問題：
+  1) 開發電腦：Windows
+  2) Docker Compose：已提供（用現有 PATS 信令，不必換 LiveKit）
+
+
+為什麼不用 LiveKit 指令？
+------------------------
+PATS 前端（call.js）已經接好 Socket.io 信令。
+LiveKit 是另一套協定，換成它要重寫整個通話前端。
+地端最快成功的方式：Docker 跑「現有 voip/server.js」。
+
+
+階段 A：同一 Wi‑Fi（最容易成功）
+--------------------------------
+1. 安裝 Docker Desktop 並開啟
+2. 雙擊 啟動地端信令.bat
+3. ipconfig 查 IPv4（例如 192.168.1.68）
+4. 瀏覽器開 http://192.168.1.68:3001/health 應有 JSON
+5. 手機與電腦同一 Wi‑Fi
+6. 前端用「本機 HTTP」測最穩：
+     http://127.0.0.1:8765/PATS-Web-page-main/
+   或 GitHub Pages 暫時改通話設定為：
+     http://192.168.1.68:3001
+   （注意：GitHub Pages 是 HTTPS，瀏覽器常會擋 HTTP 信令。
+    區網測試請優先用本機 http://127.0.0.1:8765）
+7. 兩支裝置都顯示「通話就緒」→ 私訊按綠色電話
+
+
+階段 B：外網／GitHub Pages（HTTPS）
+----------------------------------
+1. 先完成階段 A，確認區網能打
+2. 雙擊 啟動Cloudflare隧道.bat（需先裝 cloudflared）
+3. 複製出現的 https://xxxx.trycloudflare.com
+4. 手機 PATS → 通話設定 → 貼上 → 儲存
+5. 隧道視窗與 Docker 信令都要保持開著
+
+也可用先前的 voip/一鍵啟動.bat（localtunnel），原理相同。
+
+
+階段 C：跨 4G 穩定（仍要 TURN）
+--------------------------------
+地端 + 隧道只能解決「信令 HTTPS」。
+4G 沒聲音仍需 Coturn（見 oracle-free/部署說明.txt）。
+純地端要外網媒體通過，還要路由器 Port Forward，比上雲麻煩。
+
+
+與指南的對照
+------------
+指南 LiveKit docker run … --dev
+  → 本包改為 docker compose 跑 PATS signaling:3001
+
+指南 ws://192.168.x.x:7880
+  → PATS 填 http://192.168.x.x:3001（Socket.io）
+
+指南 Ngrok / Cloudflare
+  → 用 啟動Cloudflare隧道.bat
+
+
+停止
+----
+雙擊 停止地端信令.bat
+或：docker compose down

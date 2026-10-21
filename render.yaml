@@ -1,0 +1,25 @@
+# PATS 信令 — Render Blueprint
+# 文件：https://render.com/docs/blueprint-spec
+#
+# 用法（擇一）：
+#   A) Dashboard → New → Blueprint → 選此 GitHub repo（會讀本檔）
+#   B) Dashboard → New → Web Service → 手動設定（見 voip/Render部署說明.txt）
+#
+# 部署後把「服務網址」貼到 assets/js/config.js 的 signalingUrl
+# （例如 https://你的服務名.onrender.com —— 勿使用虛構網址）
+
+services:
+  - type: web
+    name: pats-signaling
+    runtime: node
+    plan: free
+    rootDir: voip
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # 正式環境請改成你的 GitHub Pages 網址（勿留 *）
+      - key: CORS_ORIGIN
+        value: https://vincent1021210.github.io

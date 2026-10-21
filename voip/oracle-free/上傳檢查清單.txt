@@ -1,0 +1,13 @@
+上傳／部署前 30 秒檢查
+======================
+
+[ ] Oracle 主機已拿到公網 IP
+[ ] Security List 已開：22, 80, 443, UDP/TCP 3478, UDP 49152-65535
+[ ] DuckDNS 網域已指向該公網 IP
+[ ] .env 的 DOMAIN、PUBLIC_IP、TURN_PASS 已改
+[ ] turnserver.conf 的 external-ip、user= 已改
+[ ] ./deploy.sh 成功
+[ ] curl https://網域/health 有 JSON
+[ ] 手機「通話設定」填 https://網域
+[ ] config.js iceServers 已加 turn:（跨 4G 必備）
+[ ] 兩支裝置都顯示「通話就緒」後再互打

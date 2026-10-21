@@ -1,0 +1,16 @@
+# PATS 地端通話信令（Docker Desktop / Windows 可用）
+# 啟動：在此資料夾執行  docker compose up -d --build
+# 健康檢查：http://本機IP:3001/health
+
+services:
+  signaling:
+    build:
+      context: ..
+      dockerfile: local-docker/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      # 本機 HTTP 測試可允許所有來源；正式請改成 GitHub Pages
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}

@@ -1,0 +1,23 @@
+listening-port=3478
+fingerprint
+lt-cred-mech
+realm=pats.local
+
+# 改成 Oracle 主機的公網 IP（若在 NAT 後可寫 公網/內網）
+external-ip=YOUR_PUBLIC_IP
+
+user=pats:please-change-this-password
+
+min-port=49152
+max-port=65535
+
+no-cli
+no-tls
+no-dtls
+simple-log
+total-quota=200
+stale-nonce=600
+no-multicast-peers
+no-loopback-peers
+listening-ip=0.0.0.0
+relay-ip=0.0.0.0

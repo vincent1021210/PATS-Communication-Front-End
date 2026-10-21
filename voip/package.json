@@ -1,0 +1,17 @@
+{
+  "name": "pats-signaling-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PATS 語音通話信令伺服器（只轉發 WebRTC 的 offer、answer 與 ICE，不經過聲音本身）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}

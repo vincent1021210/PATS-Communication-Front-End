@@ -1,0 +1,82 @@
+PATS 信令 — 用 Render 免費 HTTPS（給 GitHub Pages 用）
+====================================================
+
+目標
+----
+GitHub Pages 是 HTTPS，瀏覽器會擋 HTTP 信令（mixed content）。
+把現有 voip/server.js 部署到 Render，取得 https://….onrender.com，
+再把該網址填進 assets/js/config.js 的 signalingUrl。
+
+
+一、Render Dashboard 步驟（Web Service）
+--------------------------------------
+1. 開 https://dashboard.render.com/ 並登入（可用 GitHub 帳號）。
+2. 點「New +」→「Web Service」。
+3. 連線 GitHub，選倉庫：
+     vincent1021210/PATS-Communication-Front-End
+   （若列表沒有：Account Settings → GitHub → Configure → 勾選此 repo）
+4. 設定：
+     Name            任意，例如 pats-signaling
+                     （服務網址會變成 https://＜Name＞.onrender.com）
+     Region          離你近的即可（如 Singapore）
+     Root Directory  voip
+     Runtime         Node
+     Build Command   npm install
+     Start Command   npm start
+     Instance Type   Free
+5. 進階／環境變數 Environment：
+     CORS_ORIGIN = https://vincent1021210.github.io
+     （若 Pages 是 project site，改成實際網址，例如
+      https://vincent1021210.github.io/PATS-Communication-Front-End）
+6. 點「Create Web Service」，等 Build／Deploy 變成 Live。
+7. 打開服務頁面上方的網址，在瀏覽器測：
+     https://＜你的服務名＞.onrender.com/health
+   應看到 JSON：{"ok":true,"app":"PATS signaling",...}
+
+
+二、Blueprint（可選）
+--------------------
+倉庫根目錄有 render.yaml（rootDir: voip）。
+Dashboard → New + → Blueprint → 選同一 GitHub repo → Apply。
+
+
+三、填前端 config.js
+--------------------
+1. 複製 Render 服務網址（不要加結尾斜線），例如：
+     https://pats-signaling-xxxx.onrender.com
+2. 編輯 assets/js/config.js：
+     signalingUrl: 'https://＜貼上真實網址＞.onrender.com'
+3. 推到 GitHub Pages 用的分支後，硬重新整理前端。
+4. 也可在 App「通話設定」覆寫 signalingUrl，不必立刻改檔。
+
+※ 尚未拿到真實網址前，請保留佔位說明，不要自己發明假的 .onrender.com。
+
+
+四、Keep-alive（防免費方案休眠）
+--------------------------------
+Render Free 約 15 分鐘無流量會睡；叫醒可能要數十秒。
+
+做法：用外部監控每隔 10～14 分鐘 GET 一次 /health，例如：
+  - https://cron-job.org
+  - https://uptimerobot.com
+網址填：https://＜你的服務名＞.onrender.com/health
+
+這與「安裝 PWA」無關：
+  - Keep-alive = 定時 ping /health，讓信令不要睡。
+  - 安裝 PWA ≠ 通話必要條件；瀏覽器開 github.io 就能打（需信令 HTTPS）。
+
+
+五、本機對照
+------------
+cd voip
+npm install
+npm start
+瀏覽器開 http://localhost:3001/health
+
+
+六、常見問題
+------------
+- 前端 console 出現 mixed content：signalingUrl 仍是 http://…
+- CORS 錯誤：Render 環境變數 CORS_ORIGIN 要等於實際前端網域
+- 服務一直 Sleeping：加 keep-alive，或接受第一次連線較慢
+- Socket.io 連不上：確認用 https://…onrender.com（勿加 /health 當信令根）

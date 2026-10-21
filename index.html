@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="PATS — 安全、高效、專注的企業級商務通訊平台。">
+  <meta name="theme-color" content="#2563eb">
+  <title>PATS · 學生通訊</title>
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='16' y='22' font-size='16' font-family='sans-serif' font-weight='700' fill='white' text-anchor='middle'>P</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=archive,arrow_back,badge,call,call_end,chat,chat_bubble,chevron_right,child_care,delete_sweep,edit_square,error,forum,group_add,groups,history,history_edu,inbox,key,lock,lock_reset,login,logout,mail,manage_accounts,mark_email_read,mic,mic_off,mop,more_horiz,more_vert,person,person_add,pin,refresh,report,save,school,search,send,settings,shield,storage,supervisor_account,unarchive,visibility,visibility_off&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20261018b">
+</head>
+
+<body>
+  <!-- 開場載入 ------------------------------------------------------- -->
+  <div id="loading" class="loading-veil">
+    <div class="spinner" role="status" aria-label="載入中"></div>
+  </div>
+
+  <!-- 登入頁 --------------------------------------------------------- -->
+  <section id="auth" class="auth hidden">
+    <aside class="auth-brand">
+      <div class="auth-logo">
+        <div class="avatar" aria-hidden="true">P</div>
+        <div>
+          <h1>PATS</h1>
+          <span>Messenger</span>
+        </div>
+      </div>
+
+      <div class="auth-pitch">
+        <h2>企業級通訊解決方案</h2>
+        <p>安全、高效、專注的商務溝通平台。提升團隊協作效率，保護企業資訊安全。</p>
+      </div>
+
+      <div class="auth-note">
+        <span class="material-symbols-outlined">shield</span>
+        <span>密碼加密儲存，連線全程加密</span>
+      </div>
+    </aside>
+
+    <main class="auth-main">
+      <div class="auth-card card">
+      <!-- 登入 ------------------------------------------------------ -->
+      <div id="login-panel">
+        <div class="auth-mark"><span class="material-symbols-outlined">login</span></div>
+        <h2 class="auth-title">歡迎回來</h2>
+        <p class="auth-sub">使用 Google 帳號快速登入，或改以帳號密碼登入</p>
+
+        <div id="google-slot" class="google-slot"></div>
+        <div class="auth-divider">或使用帳號密碼</div>
+
+        <form id="login-form" class="auth-form" autocomplete="on">
+          <div id="login-error" class="form-error hidden">
+            <span class="material-symbols-outlined">error</span>
+            <span data-role="text"></span>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="login-account"><strong>電子郵件 / 帳號</strong></label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">mail</span>
+              <input id="login-account" name="account" type="text"
+                     placeholder="name@company.com" autocomplete="username" required>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="login-password">
+              <strong>密碼</strong>
+              <a href="#" id="forgot-link">忘記密碼？</a>
+            </label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">lock</span>
+              <input id="login-password" name="password" type="password"
+                     placeholder="••••••••" autocomplete="current-password" required>
+              <button type="button" class="icon-btn" data-toggle-password="login-password"
+                      aria-label="顯示密碼">
+                <span class="material-symbols-outlined">visibility_off</span>
+              </button>
+            </div>
+          </div>
+
+          <label class="checkbox">
+            <input id="login-remember" type="checkbox">
+            <span>保持登入狀態</span>
+          </label>
+
+          <button id="login-submit" type="submit" class="btn btn-primary btn-block">登入</button>
+        </form>
+
+        <p class="auth-footer">
+          還沒有帳號？ <a href="#" id="go-register">立即註冊</a>
+        </p>
+      </div>
+
+      <!-- 註冊 ------------------------------------------------------ -->
+      <div id="register-panel" class="hidden">
+        <div class="auth-mark"><span class="material-symbols-outlined">person_add</span></div>
+        <h2 class="auth-title">建立帳號</h2>
+        <p class="auth-sub" id="register-sub">使用 Google 帳號即可建立並登入</p>
+
+        <div id="google-slot-register" class="google-slot"></div>
+        <div class="auth-divider" id="register-divider">或自行填寫資料</div>
+
+        <ol class="steps" id="register-steps">
+          <li class="step is-active" data-step="1"><span>1</span>填寫資料</li>
+          <li class="step" data-step="2"><span>2</span>驗證信箱</li>
+        </ol>
+
+        <div id="register-error" class="form-error hidden">
+          <span class="material-symbols-outlined">error</span>
+          <span data-role="text"></span>
+        </div>
+
+        <form id="register-form" class="auth-form" autocomplete="on">
+
+          <div class="field">
+            <label class="field-label" for="register-name"><strong>顯示名稱</strong></label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">badge</span>
+              <input id="register-name" type="text" placeholder="王小明"
+                     autocomplete="name" maxlength="40" required>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="register-email"><strong>電子郵件</strong></label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">mail</span>
+              <input id="register-email" type="email" placeholder="name@gmail.com"
+                     autocomplete="email" required>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="register-password">
+              <strong>密碼</strong>
+              <span class="field-note">至少 8 個字元</span>
+            </label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">lock</span>
+              <input id="register-password" type="password" placeholder="設定你的密碼"
+                     autocomplete="new-password" required>
+              <button type="button" class="icon-btn" data-toggle-password="register-password"
+                      aria-label="顯示密碼">
+                <span class="material-symbols-outlined">visibility_off</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="register-confirm"><strong>確認密碼</strong></label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">lock_reset</span>
+              <input id="register-confirm" type="password" placeholder="再次輸入密碼"
+                     autocomplete="new-password" required>
+            </div>
+          </div>
+
+          <!-- 只有在後端設定了邀請碼時才會顯示 -->
+          <div class="field hidden" id="invite-field">
+            <label class="field-label" for="register-invite"><strong>邀請碼</strong></label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">key</span>
+              <input id="register-invite" type="text" placeholder="請向管理員索取">
+            </div>
+          </div>
+
+          <button id="register-submit" type="submit" class="btn btn-primary btn-block">
+            寄送驗證碼
+          </button>
+        </form>
+
+        <!-- 步驟二：輸入信中的驗證碼 -->
+        <form id="register-verify-form" class="auth-form hidden">
+          <div class="field">
+            <label class="field-label" for="register-code">
+              <strong>驗證碼</strong>
+              <span class="field-note">6 位數字，15 分鐘內有效</span>
+            </label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">pin</span>
+              <input id="register-code" type="text" inputmode="numeric" maxlength="6"
+                     class="code-input" placeholder="000000" autocomplete="one-time-code" required>
+            </div>
+          </div>
+          <button id="register-verify-submit" type="submit" class="btn btn-primary btn-block">
+            完成註冊
+          </button>
+          <button id="register-resend" type="button" class="btn btn-ghost btn-block">
+            沒收到？重新寄送
+          </button>
+          <button id="register-back" type="button" class="btn btn-quiet btn-block">
+            上一步，修改資料
+          </button>
+        </form>
+
+        <p class="auth-footer">
+          已經有帳號了？ <a href="#" id="go-login">返回登入</a>
+        </p>
+      </div>
+
+      <!-- 忘記密碼 -------------------------------------------------- -->
+      <div id="reset-panel" class="hidden">
+        <div class="auth-mark"><span class="material-symbols-outlined">lock_reset</span></div>
+        <h2 class="auth-title">重設密碼</h2>
+        <p class="auth-sub" id="reset-sub">輸入你的電子郵件，我們會寄一組驗證碼給你</p>
+
+        <ol class="steps" id="reset-steps">
+          <li class="step is-active" data-step="1"><span>1</span>驗證信箱</li>
+          <li class="step" data-step="2"><span>2</span>輸入驗證碼</li>
+          <li class="step" data-step="3"><span>3</span>設定新密碼</li>
+        </ol>
+
+        <div id="reset-error" class="form-error hidden">
+          <span class="material-symbols-outlined">error</span>
+          <span data-role="text"></span>
+        </div>
+
+        <!-- 步驟一 -->
+        <form id="reset-email-form" class="auth-form">
+          <div class="field">
+            <label class="field-label" for="reset-email"><strong>電子郵件</strong></label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">mail</span>
+              <input id="reset-email" type="email" placeholder="name@gmail.com"
+                     autocomplete="email" required>
+            </div>
+          </div>
+          <button id="reset-email-submit" type="submit" class="btn btn-primary btn-block">
+            寄送驗證碼
+          </button>
+        </form>
+
+        <!-- 步驟二 -->
+        <form id="reset-code-form" class="auth-form hidden">
+          <div class="field">
+            <label class="field-label" for="reset-code">
+              <strong>驗證碼</strong>
+              <span class="field-note">6 位數字，15 分鐘內有效</span>
+            </label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">pin</span>
+              <input id="reset-code" type="text" inputmode="numeric" maxlength="6"
+                     class="code-input" placeholder="000000" autocomplete="one-time-code" required>
+            </div>
+          </div>
+          <button id="reset-code-submit" type="submit" class="btn btn-primary btn-block">
+            驗證
+          </button>
+          <button id="reset-resend" type="button" class="btn btn-ghost btn-block">
+            沒收到？重新寄送
+          </button>
+        </form>
+
+        <!-- 步驟三 -->
+        <form id="reset-password-form" class="auth-form hidden">
+          <div class="field">
+            <label class="field-label" for="reset-new">
+              <strong>新密碼</strong>
+              <span class="field-note">至少 8 個字元</span>
+            </label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">lock</span>
+              <input id="reset-new" type="password" placeholder="設定新密碼"
+                     autocomplete="new-password" required>
+              <button type="button" class="icon-btn" data-toggle-password="reset-new"
+                      aria-label="顯示密碼">
+                <span class="material-symbols-outlined">visibility_off</span>
+              </button>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="reset-confirm"><strong>確認新密碼</strong></label>
+            <div class="input-wrap">
+              <span class="material-symbols-outlined">lock_reset</span>
+              <input id="reset-confirm" type="password" placeholder="再次輸入新密碼"
+                     autocomplete="new-password" required>
+            </div>
+          </div>
+          <button id="reset-password-submit" type="submit" class="btn btn-primary btn-block">
+            更新密碼並登入
+          </button>
+        </form>
+
+        <p class="auth-footer">
+          想起來了？ <a href="#" id="reset-back">返回登入</a>
+        </p>
+      </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- 主應用 --------------------------------------------------------- -->
+  <div id="app" class="app hidden" data-mobile="list">
+    <!-- 側邊導覽 -->
+    <nav class="rail" aria-label="主要導覽">
+      <div class="rail-identity">
+        <div class="avatar avatar-lg" id="me-avatar" aria-hidden="true">P</div>
+        <div class="meta">
+          <div class="name" id="me-name">PATS</div>
+          <div class="role" id="me-role">學生通訊</div>
+          <div class="status">上線中</div>
+        </div>
+      </div>
+
+      <div class="rail-nav">
+        <button class="rail-link hidden" data-view="guardian">
+          <span class="material-symbols-outlined">report</span>
+          <span class="label">違規與舉報</span>
+        </button>
+        <button class="rail-link is-active" data-view="dm">
+          <span class="material-symbols-outlined">chat</span>
+          <span class="label">私訊</span>
+          <span class="badge count hidden" data-count="dm">0</span>
+        </button>
+        <button class="rail-link" data-view="group">
+          <span class="material-symbols-outlined">groups</span>
+          <span class="label">群組討論</span>
+          <span class="badge count hidden" data-count="group">0</span>
+        </button>
+        <button class="rail-link" data-view="archive">
+          <span class="material-symbols-outlined">archive</span>
+          <span class="label">封存</span>
+        </button>
+        <button class="rail-link" data-view="settings">
+          <span class="material-symbols-outlined">settings</span>
+          <span class="label">設定</span>
+        </button>
+        <button class="rail-link" data-view="call">
+          <span class="material-symbols-outlined">call</span>
+          <span class="label">通話設定</span>
+        </button>
+      </div>
+
+      <div class="rail-spacer"></div>
+
+      <div class="rail-foot">
+        <div id="signal-badge" class="signal-badge hidden" aria-live="polite">通話未設定</div>
+        <button class="rail-link" data-view="profile">
+          <span class="material-symbols-outlined">person</span>
+          <span class="label">個人資料</span>
+        </button>
+        <button class="rail-link is-danger" data-action="logout">
+          <span class="material-symbols-outlined">logout</span>
+          <span class="label">登出</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- 對話列表 -->
+    <section class="list-pane" id="list-pane">
+      <header class="pane-head">
+        <h2 id="list-title">私人訊息</h2>
+        <span class="hint" id="list-hint"></span>
+        <div class="actions">
+          <button class="icon-btn" id="list-compose" title="發起新對話">
+            <span class="material-symbols-outlined">edit_square</span>
+          </button>
+          <button class="icon-btn" id="list-more" title="更多">
+            <span class="material-symbols-outlined">more_vert</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="pane-search">
+        <div class="input-wrap">
+          <span class="material-symbols-outlined">search</span>
+          <input id="list-search" type="search" placeholder="搜尋訊息或聯絡人">
+        </div>
+      </div>
+
+      <div class="conv-list scroll-y" id="conv-list"></div>
+    </section>
+
+    <!-- 對話內容 -->
+    <section class="chat-pane" id="chat-pane"></section>
+
+    <!-- 設定 -->
+    <section class="settings-pane scroll-y hidden" id="settings-pane"></section>
+
+    <!-- 家長專用：孩子的違規與舉報 -->
+    <section class="settings-pane scroll-y hidden" id="guardian-pane">
+      <div class="settings-inner">
+        <h2 class="settings-title">違規與舉報</h2>
+        <p class="settings-lead" id="guardian-lead">查看孩子在校的違規與被舉報紀錄。</p>
+
+        <section class="card settings-card">
+          <div class="settings-card-head">
+            <div class="glyph"><span class="material-symbols-outlined">child_care</span></div>
+            <div>
+              <h3>綁定的學生</h3>
+              <p id="guardian-student">尚未綁定</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card settings-card">
+          <div class="empty-state">
+            <div class="glyph"><span class="material-symbols-outlined">inbox</span></div>
+            <h3>目前沒有任何紀錄</h3>
+            <p>孩子若有違規或被舉報，紀錄會顯示在這裡。<br>
+              家長帳號不參與聊天功能。</p>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <div id="call-layer" class="call-layer hidden" role="dialog" aria-modal="true" aria-labelledby="call-name">
+    <div class="call-card">
+      <div class="avatar avatar-lg" id="call-avatar" aria-hidden="true">P</div>
+      <h2 id="call-name">對方</h2>
+      <p id="call-status">撥號中</p>
+      <div class="call-actions">
+        <button id="call-mute" class="call-round" type="button" aria-label="靜音麥克風">
+          <span class="material-symbols-outlined">mic</span>
+        </button>
+        <button id="call-reject" class="call-round is-danger hidden" type="button" aria-label="拒絕">
+          <span class="material-symbols-outlined">call_end</span>
+        </button>
+        <button id="call-accept" class="call-round is-ok hidden" type="button" aria-label="接聽">
+          <span class="material-symbols-outlined">call</span>
+        </button>
+        <button id="call-hangup" class="call-round is-danger hidden" type="button" aria-label="掛斷">
+          <span class="material-symbols-outlined">call_end</span>
+        </button>
+      </div>
+    </div>
+    <audio id="call-remote" autoplay playsinline></audio>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="menu-root"></div>
+  <div class="toast-stack" id="toast-root"></div>
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="assets/js/config.js?v=20261018b"></script>
+  <script src="assets/js/core.js?v=20261018b"></script>
+  <script src="assets/js/auth.js?v=20261018b"></script>
+  <script src="assets/js/AudioStreamManager.js?v=20261018b"></script>
+  <script src="assets/js/WebRTCManager.js?v=20261018b"></script>
+  <script src="assets/js/call.js?v=20261018b"></script>
+  <script src="assets/js/chat.js?v=20261018b"></script>
+  <script src="assets/js/settings.js?v=20261018b"></script>
+  <script src="assets/js/main.js?v=20261018b"></script>
+</body>
+</html>

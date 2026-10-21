@@ -1,0 +1,20 @@
+PATS Coturn（跨網段／4G 通話中繼）
+==================================
+
+同 Wi‑Fi 通常只靠 STUN 就能打通。
+不同網路（家裡打給 4G、公司防火牆）才需要 TURN。
+
+1. 租一台有「公網 IP」的 VPS（AWS / GCP / 甲骨文免費層等）
+2. Ubuntu 範例：
+     sudo apt update
+     sudo apt install coturn
+3. 把本資料夾 turnserver.conf 拷到 /etc/turnserver.conf
+   把 YOUR_PUBLIC_IP、帳密改成自己的
+4. 啟用：
+     sudo sed -i 's/#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
+     sudo systemctl restart coturn
+5. 防火牆放行：TCP/UDP 3478、UDP 49152-65535
+6. 前端 assets/js/config.js 的 iceServers 加上：
+     { urls: 'turn:你的公網IP:3478', username: 'pats', credential: '你的密碼' }
+
+然後重新部署／強制重新整理網頁。
