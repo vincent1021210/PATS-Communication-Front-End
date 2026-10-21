@@ -3,6 +3,10 @@
    =====================================================================
    這是整個前端唯一需要你手動修改的檔案。
    兩個值都填好之後，前端就能連上你自己的 Apps Script 後端。
+
+   聊天室資料庫備註（詳見 PATS-聊天室資料庫.txt）：
+   - 試算表：https://docs.google.com/spreadsheets/d/1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0/edit
+   - Script：https://script.google.com/u/0/home/projects/1mgXQCyQntaj6phZ53a28zQsfLU0HPouHc-zlrtBCIFPUI_U8l4rgJx3u/edit
    ===================================================================== */
 
 var PATS_CONFIG = {

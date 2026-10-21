@@ -37,6 +37,35 @@ function initializeProject() {
 }
 
 /**
+ * 綁定正式「聊天室」試算表到本專案（寫入 PATS_SPREADSHEET_ID）。
+ *
+ * 試算表：
+ *   https://docs.google.com/spreadsheets/d/1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0/edit
+ * 本 Script 專案：
+ *   https://script.google.com/u/0/home/projects/1mgXQCyQntaj6phZ53a28zQsfLU0HPouHc-zlrtBCIFPUI_U8l4rgJx3u/edit
+ *
+ * 用法：函式選單選 bindChatRoomDatabase → 執行。必要時再跑 initializeProject / setup 補齊工作表。
+ */
+function bindChatRoomDatabase() {
+  var id = '1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0';
+  PropertiesService.getScriptProperties().setProperty(DB_PROP_KEY, id);
+  SS_CACHE = null;
+  SHEET_CACHE = {};
+  ROW_CACHE = {};
+  var ss = SpreadsheetApp.openById(id);
+  var sheets = ss.getSheets().map(function (s) { return s.getName(); }).join(', ');
+  var report = [
+    '已綁定 PATS_SPREADSHEET_ID。',
+    '試算表：' + ss.getUrl(),
+    '工作表：' + sheets,
+    '',
+    '若缺表或缺欄，請再執行 initializeProject() 或 setup()。'
+  ].join('\n');
+  Logger.log(report);
+  return report;
+}
+
+/**
  * 一鍵寫入 Google 登入用的 Client ID（解決「後端尚未設定 Google 用戶端 ID」）。
  *
  * 用法：Apps Script 編輯器上方函式選單選 setupGoogleClientId → 按「執行」。

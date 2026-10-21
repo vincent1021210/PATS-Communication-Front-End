@@ -1,0 +1,29 @@
+PATS「聊天室」資料庫（正式環境）
+================================
+
+試算表（Google Sheets）
+  名稱／用途：PATS 聊天室資料庫
+  網址：
+    https://docs.google.com/spreadsheets/d/1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0/edit?gid=0#gid=0
+  Spreadsheet ID：
+    1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0
+
+Apps Script（後端 API）
+  專案編輯器：
+    https://script.google.com/u/0/home/projects/1mgXQCyQntaj6phZ53a28zQsfLU0HPouHc-zlrtBCIFPUI_U8l4rgJx3u/edit
+  Script ID：
+    1mgXQCyQntaj6phZ53a28zQsfLU0HPouHc-zlrtBCIFPUI_U8l4rgJx3u
+  前端 apiUrl（config.js）：
+    https://script.google.com/macros/s/AKfycbzNkhCXzywXo6dxazgRCmB2JnEkLqV2XMVAlP0umwQpLZ6WrD6RcIYCqAjrj9sxFCW33Q/exec
+
+指令碼屬性（應指向上方試算表）
+  鍵名：PATS_SPREADSHEET_ID
+  值：  1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0
+  在編輯器執行：bindChatRoomDatabase()（見 apps-script/Setup.gs）
+
+資料表（工作表）
+  users, sessions, resets, signups, contacts,
+  conversations, participants, messages
+
+語音信令（與試算表無關，見 voip/）
+  https://pats-communication-front-end.onrender.com
