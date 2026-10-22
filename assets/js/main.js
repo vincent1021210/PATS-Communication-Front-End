@@ -134,13 +134,34 @@ var PatsMain = (function () {
         ? '管理員'
         : (user.roleLabel || '成員');
     }
-    var avatar = $('#me-avatar');
-    avatar.innerHTML = '';
-    if (user.avatarUrl) {
-      avatar.appendChild(PATS.el('img', { src: user.avatarUrl, alt: '' }));
-    } else {
-      avatar.textContent = PATS.initials(user.displayName || user.username);
+    var label = PATS.initials(user.displayName || user.username);
+    function paintMeAvatar(node) {
+      if (!node) return;
+      node.innerHTML = '';
+      if (user.avatarUrl) {
+        var img = PATS.el('img', {
+          src: user.avatarUrl,
+          alt: '',
+          referrerpolicy: 'no-referrer',
+          decoding: 'async'
+        });
+        img.addEventListener('error', function () {
+          img.remove();
+          if (!node.textContent) node.textContent = label;
+        });
+        node.appendChild(img);
+      } else {
+        node.textContent = label;
+      }
     }
+    paintMeAvatar($('#me-avatar'));
+    paintMeAvatar($('#me-avatar-mobile'));
+    var mobileMe = $('#me-avatar-mobile');
+    if (mobileMe && !mobileMe._bound) {
+      mobileMe._bound = true;
+      mobileMe.addEventListener('click', function () { setView('profile'); });
+    }
+    if (mobileMe) mobileMe.classList.remove('hidden');
   }
 
   /* ----------------------------------------------------------- 畫面切換 */

@@ -189,8 +189,23 @@ var PATS = (function () {
 
   function avatarNode(name, url, extraClass) {
     var node = el('div', { class: 'avatar ' + (extraClass || '') });
-    if (url) node.appendChild(el('img', { src: url, alt: '', loading: 'lazy' }));
-    else node.textContent = initials(name);
+    var label = initials(name);
+    if (url) {
+      var img = el('img', {
+        src: url,
+        alt: '',
+        loading: 'lazy',
+        referrerpolicy: 'no-referrer',
+        decoding: 'async'
+      });
+      img.addEventListener('error', function () {
+        img.remove();
+        if (!node.textContent) node.textContent = label;
+      });
+      node.appendChild(img);
+    } else {
+      node.textContent = label;
+    }
     return node;
   }
 

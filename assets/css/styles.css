@@ -178,8 +178,14 @@ a:hover { text-decoration: underline; }
   background: var(--brand-100); color: var(--brand-700);
   font-weight: 600; font-size: 14px;
   object-fit: cover; overflow: hidden;
+  flex-shrink: 0;
 }
-.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar img {
+  display: block;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
 .avatar-sm { width: 32px; height: 32px; font-size: 12px; }
 .avatar-lg { width: 44px; height: 44px; }
 
@@ -846,6 +852,7 @@ select.email-domain {
 .signal-strip.is-bad { background: #fee2e2; color: #991b1b; }
 
 .rail-mobile-only { display: none !important; }
+.mobile-me { display: none !important; }
 
 .call-layer {
   position: fixed; inset: 0; z-index: 80;
@@ -1084,8 +1091,19 @@ select.email-domain {
     -webkit-overflow-scrolling: touch;
   }
   .msg { max-width: 86%; }
-  .msg .avatar { display: none; }
+  .msg .avatar { display: grid; }
   .bubble { font-size: 15px; padding: 10px 12px; }
+
+  .mobile-me {
+    display: grid !important;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+  }
 
   .composer {
     gap: 8px;
