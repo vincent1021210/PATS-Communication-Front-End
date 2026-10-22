@@ -29,11 +29,20 @@ var PatsCall = (function () {
   }
 
   function signalingUrl() {
+    var fallback = String((PATS.state.config && PATS.state.config.signalingUrl) || '').replace(/\/$/, '');
     try {
       var saved = window.localStorage.getItem(SIGNAL_KEY);
-      if (saved && saved.trim()) return saved.trim().replace(/\/$/, '');
+      if (saved && saved.trim()) {
+        saved = saved.trim().replace(/\/$/, '');
+        // HTTPS 網站上不能用 HTTP 信令；清掉舊覆寫，改回 config 固定網址
+        if (location.protocol === 'https:' && /^http:\/\//i.test(saved)) {
+          window.localStorage.removeItem(SIGNAL_KEY);
+          return fallback;
+        }
+        return saved;
+      }
     } catch (e) { /* ignore */ }
-    return String((PATS.state.config && PATS.state.config.signalingUrl) || '').replace(/\/$/, '');
+    return fallback;
   }
 
   function setSignalingUrl(url) {
