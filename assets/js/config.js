@@ -56,7 +56,8 @@ var PATS_CONFIG = {
 
   /**
    * STUN／TURN。同網段通常只要 Google STUN。
-   * Oracle + Coturn 部署後加上（網域與密碼見 oracle-free/.env）：
+   * 跨網／4G 需要 TURN：call.js 會自動加上 Metered Open Relay
+   *（staticauth 動態憑證，或下方 API）。也可自行填入 Coturn：
    *   { urls: 'stun:pats-call.duckdns.org:3478' },
    *   { urls: 'turn:pats-call.duckdns.org:3478', username: 'pats', credential: '你的密碼' }
    */
@@ -64,5 +65,12 @@ var PATS_CONFIG = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' }
     // { urls: 'turn:pats-call.duckdns.org:3478', username: 'pats', credential: 'please-change-this-password' }
-  ]
+  ],
+
+  /**
+   * （選填）Metered TURN 憑證 API 網址。
+   * 填入後 call.js 優先 fetch 回傳的 iceServers；留空則使用 Open Relay staticauth。
+   * 範例：'https://＜你的子網域＞.metered.live/api/v1/turn/credentials?apiKey=…'
+   */
+  meteredTurnApiUrl: ''
 };

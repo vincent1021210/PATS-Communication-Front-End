@@ -20,10 +20,10 @@ var PatsCall = (function () {
   function $(id) { return document.getElementById(id); }
 
   // #region agent log
-  function dbgCall_(hypothesisId, location, message, data) {
+  function dbgCall_(hypothesisId, location, message, data, runId) {
     var entry = {
       sessionId: 'b641af',
-      runId: 'pre-fix',
+      runId: runId || 'pre-fix',
       hypothesisId: hypothesisId,
       location: location,
       message: message,
@@ -52,13 +52,163 @@ var PatsCall = (function () {
   }
   // #endregion
 
-  function iceServers() {
-    var configured = PATS.state.config.iceServers;
-    if (configured && configured.length) return configured;
+  function googleStunServers_() {
     return [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' }
     ];
+  }
+
+  function configuredTurnServers_() {
+    var configured = (PATS.state.config && PATS.state.config.iceServers) || [];
+    return configured.filter(function (s) {
+      var u = typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
+      return /turns?:/i.test(u);
+    });
+  }
+
+  function legacyOpenRelayServers_() {
+    return [
+      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    ];
+  }
+
+  function urlKinds_(servers) {
+    var kinds = { stun: 0, turn: 0, turns: 0 };
+    (servers || []).forEach(function (s) {
+      var list = Array.isArray(s.urls) ? s.urls : [s.urls];
+      list.forEach(function (u) {
+        u = String(u || '').toLowerCase();
+        if (u.indexOf('turns:') === 0) kinds.turns += 1;
+        else if (u.indexOf('turn:') === 0) kinds.turn += 1;
+        else if (u.indexOf('stun:') === 0) kinds.stun += 1;
+      });
+    });
+    return kinds;
+  }
+
+  function hasTurnUrl_(servers) {
+    return (servers || []).some(function (s) {
+      var u = typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
+      return /turns?:/i.test(u);
+    });
+  }
+
+  function hmacSha1Base64_(secret, message) {
+    var enc = new TextEncoder();
+    return crypto.subtle.importKey(
+      'raw',
+      enc.encode(secret),
+      { name: 'HMAC', hash: 'SHA-1' },
+      false,
+      ['sign']
+    ).then(function (key) {
+      return crypto.subtle.sign('HMAC', key, enc.encode(message));
+    }).then(function (sig) {
+      var bytes = new Uint8Array(sig);
+      var binary = '';
+      for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    });
+  }
+
+  function buildStaticAuthServers_() {
+    var username = String(Math.floor(Date.now() / 1000) + 6 * 3600);
+    return hmacSha1Base64_('openrelayprojectsecret', username).then(function (credential) {
+      return googleStunServers_().concat([
+        { urls: 'turn:staticauth.openrelay.metered.ca:80', username: username, credential: credential },
+        { urls: 'turn:staticauth.openrelay.metered.ca:443', username: username, credential: credential },
+        { urls: 'turn:staticauth.openrelay.metered.ca:443?transport=tcp', username: username, credential: credential },
+        { urls: 'turns:staticauth.openrelay.metered.ca:443', username: username, credential: credential }
+      ], legacyOpenRelayServers_(), configuredTurnServers_());
+    });
+  }
+
+  /** 同步讀取：優先 session 快取，否則僅 config STUN（開通前占位）。 */
+  function iceServers() {
+    if (session && session.resolvedIce && session.resolvedIce.length) {
+      return session.resolvedIce;
+    }
+    var configured = PATS.state.config.iceServers;
+    if (configured && configured.length) return configured;
+    return googleStunServers_();
+  }
+
+  function resolveIceServers() {
+    if (session && session.resolvedIce && session.resolvedIce.length) {
+      return Promise.resolve(session.resolvedIce);
+    }
+
+    var apiUrl = String((PATS.state.config && PATS.state.config.meteredTurnApiUrl) || '').trim();
+    var onlyConfigTurn = configuredTurnServers_();
+
+    function finishResolve(servers, iceSource) {
+      var list = servers && servers.length ? servers : googleStunServers_();
+      if (session) {
+        session.resolvedIce = list;
+        session.iceSource = iceSource;
+      }
+      var kinds = urlKinds_(list);
+      var hasTurn = hasTurnUrl_(list);
+      // #region agent log
+      dbgCall_('F', 'call.js:resolveIceServers', 'ice servers resolved', {
+        hasTurn: hasTurn,
+        urlKinds: kinds,
+        iceSource: iceSource,
+        iceServerCount: list.length
+      }, 'post-fix');
+      if (!hasTurn) {
+        dbgCall_('G', 'call.js:resolveIceServers', 'no turn urls after resolve', {
+          iceSource: iceSource,
+          urlKinds: kinds
+        }, 'post-fix');
+      }
+      // #endregion
+      return list;
+    }
+
+    var apiPromise = Promise.resolve(null);
+    if (apiUrl) {
+      apiPromise = fetch(apiUrl).then(function (res) {
+        if (!res.ok) throw new Error('metered api ' + res.status);
+        return res.json();
+      }).then(function (data) {
+        var servers = (data && data.iceServers) || data;
+        if (!Array.isArray(servers) || !servers.length) throw new Error('empty iceServers');
+        return finishResolve(
+          googleStunServers_().concat(servers, configuredTurnServers_()),
+          'metered-api'
+        );
+      }).catch(function () {
+        return null;
+      });
+    }
+
+    return apiPromise.then(function (fromApi) {
+      if (fromApi) return fromApi;
+      if (window.crypto && crypto.subtle) {
+        return buildStaticAuthServers_().then(function (servers) {
+          return finishResolve(servers, 'staticauth');
+        }).catch(function () {
+          return finishResolve(
+            googleStunServers_().concat(legacyOpenRelayServers_(), configuredTurnServers_()),
+            'legacy'
+          );
+        });
+      }
+      if (onlyConfigTurn.length) {
+        return finishResolve(
+          googleStunServers_().concat(legacyOpenRelayServers_(), onlyConfigTurn),
+          'config'
+        );
+      }
+      return finishResolve(
+        googleStunServers_().concat(legacyOpenRelayServers_(), configuredTurnServers_()),
+        'legacy'
+      );
+    });
   }
 
   function signalingUrl() {
@@ -619,19 +769,19 @@ var PatsCall = (function () {
 
   function restart() {
     if (!session || !session.pc) return;
+    var ice = iceServers();
     // #region agent log
     dbgCall_('E', 'call.js:restart', 'ice restart path', {
       alreadyRetried: !!session.retried,
       isCaller: !!session.isCaller,
-      iceServerCount: (iceServers() || []).length,
-      hasTurn: (iceServers() || []).some(function (s) {
-        var u = typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
-        return /turn:/i.test(u);
-      })
-    });
+      iceServerCount: (ice || []).length,
+      hasTurn: hasTurnUrl_(ice),
+      urlKinds: urlKinds_(ice),
+      iceSource: session.iceSource || null
+    }, session.retried ? 'post-fix' : 'pre-fix');
     // #endregion
     if (session.retried) {
-      finish('目前無法建立語音連線（不同網路／4G 常見）。請雙方開同一 Wi‑Fi 再試，或稍後架設 TURN。');
+      finish('目前無法建立語音連線（不同網路／4G 常見）。已設定 TURN 中繼，若仍失敗可能是配額或網路阻擋；請雙方開同一 Wi‑Fi 再試，或稍後自架 TURN。');
       return;
     }
     session.retried = true;
@@ -652,41 +802,49 @@ var PatsCall = (function () {
         return;
       }
       session.stream = stream;
-      // #region agent log
-      dbgCall_('A', 'call.js:openMedia', 'openMedia ice config', {
-        isCaller: !!(session && session.isCaller),
-        iceUrls: (iceServers() || []).map(function (s) {
-          return typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
-        }),
-        pageHost: location.host,
-        pageProto: location.protocol
+      return resolveIceServers().then(function (servers) {
+        if (!alive(token)) {
+          AudioStreamManager.stop(stream);
+          return;
+        }
+        // #region agent log
+        dbgCall_('A', 'call.js:openMedia', 'openMedia ice config', {
+          isCaller: !!(session && session.isCaller),
+          iceUrls: (servers || []).map(function (s) {
+            return typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
+          }),
+          hasTurn: hasTurnUrl_(servers),
+          urlKinds: urlKinds_(servers),
+          pageHost: location.host,
+          pageProto: location.protocol
+        }, 'post-fix');
+        // #endregion
+        session.pc = WebRTCManager.create({
+          iceServers: servers,
+          onIceCandidate: function (candidate) {
+            // #region agent log
+            dbgCall_('D', 'call.js:onIceCandidate', 'emit ice-candidate', {
+              hasSocket: !!socket,
+              signalState: signalState
+            });
+            // #endregion
+            emit('ice-candidate', { candidate: candidate });
+          },
+          onTrack: function (remote) {
+            var audio = $('call-remote');
+            audio.srcObject = remote;
+            audio.play().catch(function () {});
+          },
+          onConnectionState: onConnectionState
+        });
+        session.pc.addStream(stream);
+        var queued = session.earlyIce.splice(0);
+        queued.forEach(function (candidate) {
+          session.pc.addIceCandidate(candidate);
+        });
+        muted = false;
+        setMuteIcon();
       });
-      // #endregion
-      session.pc = WebRTCManager.create({
-        iceServers: iceServers(),
-        onIceCandidate: function (candidate) {
-          // #region agent log
-          dbgCall_('D', 'call.js:onIceCandidate', 'emit ice-candidate', {
-            hasSocket: !!socket,
-            signalState: signalState
-          });
-          // #endregion
-          emit('ice-candidate', { candidate: candidate });
-        },
-        onTrack: function (remote) {
-          var audio = $('call-remote');
-          audio.srcObject = remote;
-          audio.play().catch(function () {});
-        },
-        onConnectionState: onConnectionState
-      });
-      session.pc.addStream(stream);
-      var queued = session.earlyIce.splice(0);
-      queued.forEach(function (candidate) {
-        session.pc.addIceCandidate(candidate);
-      });
-      muted = false;
-      setMuteIcon();
     });
   }
 
@@ -703,7 +861,9 @@ var PatsCall = (function () {
       offer: null,
       retried: false,
       restartTimer: null,
-      earlyIce: []
+      earlyIce: [],
+      resolvedIce: null,
+      iceSource: null
     };
     return generation;
   }
