@@ -21,7 +21,7 @@ var PatsCall = (function () {
 
   // #region agent log
   function dbgCall_(hypothesisId, location, message, data) {
-    var payload = JSON.stringify({
+    var entry = {
       sessionId: 'b641af',
       runId: 'pre-fix',
       hypothesisId: hypothesisId,
@@ -29,7 +29,17 @@ var PatsCall = (function () {
       message: message,
       data: data || {},
       timestamp: Date.now()
-    });
+    };
+    try { console.debug('[PATS-dbg]', hypothesisId, location, message, entry.data); } catch (e) { /* ignore */ }
+    try {
+      var key = 'pats.debug.b641af';
+      var buf = JSON.parse(window.localStorage.getItem(key) || '[]');
+      if (!Array.isArray(buf)) buf = [];
+      buf.push(entry);
+      if (buf.length > 80) buf = buf.slice(-80);
+      window.localStorage.setItem(key, JSON.stringify(buf));
+    } catch (e2) { /* ignore */ }
+    var payload = JSON.stringify(entry);
     var opts = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'b641af' },
@@ -155,21 +165,58 @@ var PatsCall = (function () {
     }, 2500);
   }
 
+  function ensureSignalPresence() {
+    if (!currentUser) return;
+    if (socket && socket.connected) registerSelf();
+    else connect(currentUser);
+  }
+
+  function bindLifecycle() {
+    if (bindLifecycle._done) return;
+    bindLifecycle._done = true;
+    document.addEventListener('visibilitychange', function () {
+      // #region agent log
+      dbgCall_('A', 'call.js:visibilitychange', document.hidden ? 'page hidden' : 'page visible', {
+        hidden: !!document.hidden,
+        signalState: signalState,
+        socketConnected: !!(socket && socket.connected),
+        hasSession: !!session
+      });
+      // #endregion
+      if (document.hidden) return;
+      // #region agent log
+      dbgCall_('J', 'call.js:visibility', 'page visible — re-register', {
+        signalState: signalState,
+        socketConnected: !!(socket && socket.connected)
+      });
+      // #endregion
+      ensureSignalPresence();
+    });
+    window.addEventListener('pageshow', function () { ensureSignalPresence(); });
+    window.addEventListener('focus', function () { ensureSignalPresence(); });
+  }
+
   function registerSelf() {
     if (!socket || !currentUser) return;
+    var displayName = currentUser.displayName || currentUser.username ||
+      currentUser.email || currentUser.id;
     // #region agent log
-    dbgCall_('H', 'call.js:registerSelf', 'register emit', {
+    dbgCall_('B', 'call.js:registerSelf', 'register emit', {
       userId: currentUser.id,
+      hasDisplayName: !!displayName,
+      nameEqualsId: String(displayName || '') === String(currentUser.id || ''),
+      nameLen: String(displayName || '').length,
       socketConnected: !!(socket && socket.connected),
-      signalState: signalState
+      signalState: signalState,
+      pageHidden: !!document.hidden
     });
     // #endregion
     socket.emit('register', {
       userId: currentUser.id,
-      name: currentUser.displayName || currentUser.username || currentUser.email
+      name: displayName
     }, function (ack) {
       // #region agent log
-      dbgCall_('H', 'call.js:registerSelf', 'register ack', {
+      dbgCall_('B', 'call.js:registerSelf', 'register ack', {
         userId: currentUser && currentUser.id,
         ackOk: !!(ack && ack.ok),
         online: ack && ack.online
@@ -204,19 +251,35 @@ var PatsCall = (function () {
     }
 
     setSignalState('connecting');
+    bindLifecycle();
     socket = io(url, {
       autoConnect: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1500
+      reconnectionDelay: 1500,
+      timeout: 20000
     });
 
     socket.on('connect', function () {
       setSignalState('online');
+      // #region agent log
+      dbgCall_('A', 'call.js:socket', 'socket connected', {
+        pageHidden: !!document.hidden,
+        userId: currentUser && currentUser.id
+      });
+      // #endregion
       registerSelf();
     });
-    socket.on('disconnect', function () {
+    socket.on('disconnect', function (reason) {
+      // #region agent log
+      dbgCall_('A', 'call.js:socket', 'socket disconnect', {
+        reason: reason || null,
+        pageHidden: !!document.hidden,
+        hasSession: !!session,
+        userId: currentUser && currentUser.id
+      });
+      // #endregion
       setSignalState('offline');
       scheduleReconnect();
     });
@@ -293,14 +356,65 @@ var PatsCall = (function () {
 
   function displayCallName(name, userId) {
     var label = String(name || '').trim();
-    if (label && label !== String(userId || '')) return label;
+    var id = String(userId || '').trim();
+    var source = 'payload';
+    if (label && label !== id) {
+      // #region agent log
+      dbgCall_('C', 'call.js:displayCallName', 'resolved name', {
+        source: source, usedIdFallback: false, hasId: !!id
+      });
+      // #endregion
+      return label;
+    }
     try {
+      var titleEl = document.querySelector('#chat-pane .chat-head .title');
+      if (titleEl) {
+        var t = String(titleEl.textContent || '').trim();
+        if (t) {
+          // #region agent log
+          dbgCall_('C', 'call.js:displayCallName', 'resolved name', {
+            source: 'chat-head', usedIdFallback: false, hasId: !!id
+          });
+          // #endregion
+          return t;
+        }
+      }
       var list = (window.PATS && PATS.state && PATS.state.conversations) || [];
+      var matched = null;
+      var anyDm = null;
       for (var i = 0; i < list.length; i++) {
-        if (list[i] && list[i].peerId === userId && list[i].title) return list[i].title;
+        var c = list[i];
+        if (!c || c.type === 'group' || !c.title) continue;
+        if (!anyDm) anyDm = c.title;
+        if (id && (c.peerId === id || (c.members || []).some(function (m) { return m && m.id === id; }))) {
+          matched = c.title;
+          break;
+        }
+      }
+      if (matched) {
+        // #region agent log
+        dbgCall_('C', 'call.js:displayCallName', 'resolved name', {
+          source: 'conv-peer', usedIdFallback: false, hasId: !!id
+        });
+        // #endregion
+        return matched;
+      }
+      if (anyDm) {
+        // #region agent log
+        dbgCall_('C', 'call.js:displayCallName', 'resolved name', {
+          source: 'any-dm', usedIdFallback: false, hasId: !!id
+        });
+        // #endregion
+        return anyDm;
       }
     } catch (e) { /* ignore */ }
-    return label || '對方';
+    // #region agent log
+    dbgCall_('C', 'call.js:displayCallName', 'resolved name', {
+      source: 'fallback-對方', usedIdFallback: true, hasId: !!id,
+      rawWasId: !!(label && label === id)
+    });
+    // #endregion
+    return '對方';
   }
 
   /* ------------------------------------------------------------- 通話 */
@@ -323,11 +437,13 @@ var PatsCall = (function () {
     }
 
     // #region agent log
-    dbgCall_('G', 'call.js:dial', 'check-peer before', {
+    dbgCall_('D', 'call.js:dial', 'check-peer before', {
       peerId: peer.id,
+      peerName: peer.name || null,
       myId: currentUser && currentUser.id,
       signalState: signalState,
       socketConnected: !!(socket && socket.connected),
+      pageHidden: !!document.hidden,
       signalingHost: (function () {
         try { return new URL(signalingUrl()).host; } catch (e) { return 'bad'; }
       })()
@@ -335,17 +451,18 @@ var PatsCall = (function () {
     // #endregion
     socket.emit('check-peer', { userId: peer.id }, function (res) {
       // #region agent log
-      dbgCall_('G', 'call.js:dial', 'check-peer result', {
+      dbgCall_('D', 'call.js:dial', 'check-peer result', {
         peerId: peer.id,
         myId: currentUser && currentUser.id,
         resOk: !!(res && res.ok),
         resOnline: !!(res && res.online),
         resRaw: res ? { ok: res.ok, online: res.online, error: res.error || null } : null,
-        signalState: signalState
+        signalState: signalState,
+        pageHidden: !!document.hidden
       });
       // #endregion
       if (!res || !res.ok || !res.online) {
-        PATS.toast('對方目前不在線上（尚未連上通話伺服器）。', 'error');
+        PATS.toast('對方通話未就緒。請對方打開 PATS、畫面保持在前景，並確認顯示「通話就緒」後再撥。', 'error');
         return;
       }
       startDial(peer);
@@ -377,6 +494,15 @@ var PatsCall = (function () {
       socket.emit('reject-call', { to: payload.from, callId: payload.callId, reason: 'busy' });
       return;
     }
+    // #region agent log
+    dbgCall_('E', 'call.js:onIncoming', 'incoming call', {
+      from: payload.from || null,
+      fromName: payload.fromName || null,
+      callId: payload.callId || null,
+      pageHidden: !!document.hidden,
+      signalState: signalState
+    });
+    // #endregion
     var incomingName = displayCallName(payload.fromName, payload.from);
     begin({ id: payload.from, name: incomingName }, false);
     session.callId = payload.callId;
@@ -431,6 +557,15 @@ var PatsCall = (function () {
   }
 
   function onAccepted(payload) {
+    // #region agent log
+    dbgCall_('E', 'call.js:onAccepted', 'call-accepted received', {
+      sameCall: sameCall(payload),
+      hasSession: !!session,
+      hasPc: !!(session && session.pc),
+      phase: session && session.phase,
+      callId: payload && payload.callId
+    });
+    // #endregion
     if (!sameCall(payload) || !session || !session.pc) return;
     session.phase = 'connecting';
     setStatus('接通中…');
@@ -578,6 +713,18 @@ var PatsCall = (function () {
   }
 
   function finish(message) {
+    // #region agent log
+    dbgCall_('E', 'call.js:finish', 'call finish', {
+      message: message || null,
+      wasCaller: !!(session && session.isCaller),
+      phase: session && session.phase,
+      callId: session && session.callId,
+      peerId: session && session.peerId,
+      pageHidden: !!document.hidden,
+      socketConnected: !!(socket && socket.connected),
+      signalState: signalState
+    });
+    // #endregion
     generation += 1;
     stopTimer();
     if (session) {

@@ -141,7 +141,13 @@ var PatsChat = (function () {
     var members = (conv && conv.members) || [];
     var me = state.user && state.user.id;
     for (var i = 0; i < members.length; i++) {
-      if (members[i].id !== me) return members[i];
+      if (members[i].id !== me) {
+        return {
+          id: members[i].id,
+          name: members[i].name || conv.title || members[i].id,
+          avatarUrl: members[i].avatarUrl || conv.avatarUrl || ''
+        };
+      }
     }
     return null;
   }
@@ -152,8 +158,8 @@ var PatsChat = (function () {
       return;
     }
     var peer = peerOf(conv);
-    if (!peer) {
-      PATS.toast('找不到通話對象。', 'error');
+    if (!peer || !peer.id) {
+      PATS.toast('找不到通話對象。請先開啟對話再撥打。', 'error');
       return;
     }
     PatsCall.dial(peer);
