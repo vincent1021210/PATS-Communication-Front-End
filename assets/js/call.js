@@ -19,6 +19,29 @@ var PatsCall = (function () {
 
   function $(id) { return document.getElementById(id); }
 
+  // #region agent log
+  function dbgCall_(hypothesisId, location, message, data) {
+    var payload = JSON.stringify({
+      sessionId: 'b641af',
+      runId: 'pre-fix',
+      hypothesisId: hypothesisId,
+      location: location,
+      message: message,
+      data: data || {},
+      timestamp: Date.now()
+    });
+    var opts = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'b641af' },
+      body: payload
+    };
+    [
+      'http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',
+      'http://192.168.1.136:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795'
+    ].forEach(function (url) { fetch(url, opts).catch(function () {}); });
+  }
+  // #endregion
+
   function iceServers() {
     var configured = PATS.state.config.iceServers;
     if (configured && configured.length) return configured;
@@ -134,9 +157,24 @@ var PatsCall = (function () {
 
   function registerSelf() {
     if (!socket || !currentUser) return;
+    // #region agent log
+    dbgCall_('H', 'call.js:registerSelf', 'register emit', {
+      userId: currentUser.id,
+      socketConnected: !!(socket && socket.connected),
+      signalState: signalState
+    });
+    // #endregion
     socket.emit('register', {
       userId: currentUser.id,
       name: currentUser.displayName || currentUser.username || currentUser.email
+    }, function (ack) {
+      // #region agent log
+      dbgCall_('H', 'call.js:registerSelf', 'register ack', {
+        userId: currentUser && currentUser.id,
+        ackOk: !!(ack && ack.ok),
+        online: ack && ack.online
+      });
+      // #endregion
     });
   }
 
@@ -240,13 +278,29 @@ var PatsCall = (function () {
   function dialHint() {
     var url = signalingUrl();
     if (!url) return '尚未設定通話伺服器。請到「設定 → 通話」填入信令網址。';
+    // 日誌證實：http://192.168.x.x 非安全環境，mediaDevices 不存在
+    if (!window.isSecureContext) {
+      return '此網址無法使用麥克風。請改用 https://vincent1021210.github.io/ ，或本機 http://127.0.0.1:8766/（不要用 192.168 區網 IP）。';
+    }
     if (isBlockedMixedContent(url)) {
-      return '目前是 HTTPS 網站，無法連 HTTP 信令。請在後端啟動「HTTPS 隧道」，再到設定貼上 https:// 開頭的網址；或改用本機 http://127.0.0.1:8765 測試。';
+      return '目前是 HTTPS 網站，無法連 HTTP 信令。請確認通話設定為 https://pats-communication-front-end.onrender.com';
     }
     if (!socket || !socket.connected) {
-      return '通話伺服器未連線。請在後端電腦執行「啟動信令.bat」，確認 ' + url + '/health 可開啟。';
+      return '通話伺服器未連線。請確認「通話就緒」，或開啟 ' + url + '/health';
     }
     return '';
+  }
+
+  function displayCallName(name, userId) {
+    var label = String(name || '').trim();
+    if (label && label !== String(userId || '')) return label;
+    try {
+      var list = (window.PATS && PATS.state && PATS.state.conversations) || [];
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].peerId === userId && list[i].title) return list[i].title;
+      }
+    } catch (e) { /* ignore */ }
+    return label || '對方';
   }
 
   /* ------------------------------------------------------------- 通話 */
@@ -268,7 +322,28 @@ var PatsCall = (function () {
       return;
     }
 
+    // #region agent log
+    dbgCall_('G', 'call.js:dial', 'check-peer before', {
+      peerId: peer.id,
+      myId: currentUser && currentUser.id,
+      signalState: signalState,
+      socketConnected: !!(socket && socket.connected),
+      signalingHost: (function () {
+        try { return new URL(signalingUrl()).host; } catch (e) { return 'bad'; }
+      })()
+    });
+    // #endregion
     socket.emit('check-peer', { userId: peer.id }, function (res) {
+      // #region agent log
+      dbgCall_('G', 'call.js:dial', 'check-peer result', {
+        peerId: peer.id,
+        myId: currentUser && currentUser.id,
+        resOk: !!(res && res.ok),
+        resOnline: !!(res && res.online),
+        resRaw: res ? { ok: res.ok, online: res.online, error: res.error || null } : null,
+        signalState: signalState
+      });
+      // #endregion
       if (!res || !res.ok || !res.online) {
         PATS.toast('對方目前不在線上（尚未連上通話伺服器）。', 'error');
         return;
@@ -279,7 +354,7 @@ var PatsCall = (function () {
 
   function startDial(peer) {
     var token = begin(peer, true);
-    paintPeer(peer.name);
+    paintPeer(displayCallName(peer.name, peer.id));
     setStatus('撥號中…');
     setActions('dialing');
     showLayer();
@@ -302,10 +377,11 @@ var PatsCall = (function () {
       socket.emit('reject-call', { to: payload.from, callId: payload.callId, reason: 'busy' });
       return;
     }
-    begin({ id: payload.from, name: payload.fromName }, false);
+    var incomingName = displayCallName(payload.fromName, payload.from);
+    begin({ id: payload.from, name: incomingName }, false);
     session.callId = payload.callId;
     session.offer = payload.offer;
-    paintPeer(payload.fromName);
+    paintPeer(incomingName);
     setStatus('來電…');
     setActions('ringing');
     showLayer();
@@ -378,6 +454,14 @@ var PatsCall = (function () {
 
   function onConnectionState(state) {
     if (!session) return;
+    // #region agent log
+    dbgCall_('B', 'call.js:onConnectionState', 'call connection state', {
+      state: state,
+      isCaller: !!(session && session.isCaller),
+      retried: !!(session && session.retried),
+      phase: session && session.phase
+    });
+    // #endregion
     if (state === 'connected' || state === 'completed') {
       markActive();
       return;
@@ -400,6 +484,17 @@ var PatsCall = (function () {
 
   function restart() {
     if (!session || !session.pc) return;
+    // #region agent log
+    dbgCall_('E', 'call.js:restart', 'ice restart path', {
+      alreadyRetried: !!session.retried,
+      isCaller: !!session.isCaller,
+      iceServerCount: (iceServers() || []).length,
+      hasTurn: (iceServers() || []).some(function (s) {
+        var u = typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
+        return /turn:/i.test(u);
+      })
+    });
+    // #endregion
     if (session.retried) {
       finish('目前無法建立語音連線（不同網路／4G 常見）。請雙方開同一 Wi‑Fi 再試，或稍後架設 TURN。');
       return;
@@ -422,9 +517,25 @@ var PatsCall = (function () {
         return;
       }
       session.stream = stream;
+      // #region agent log
+      dbgCall_('A', 'call.js:openMedia', 'openMedia ice config', {
+        isCaller: !!(session && session.isCaller),
+        iceUrls: (iceServers() || []).map(function (s) {
+          return typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
+        }),
+        pageHost: location.host,
+        pageProto: location.protocol
+      });
+      // #endregion
       session.pc = WebRTCManager.create({
         iceServers: iceServers(),
         onIceCandidate: function (candidate) {
+          // #region agent log
+          dbgCall_('D', 'call.js:onIceCandidate', 'emit ice-candidate', {
+            hasSocket: !!socket,
+            signalState: signalState
+          });
+          // #endregion
           emit('ice-candidate', { candidate: candidate });
         },
         onTrack: function (remote) {
