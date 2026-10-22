@@ -203,14 +203,7 @@ var PatsChat = (function () {
     renderMessages(body, data.messages, false);
 
     pane.appendChild(composer());
-    if (isPrivateChat(conv)) {
-      pane.appendChild(el('div', { class: 'call-bar' }, [
-        el('button', {
-          class: 'btn btn-primary call-bar-btn', type: 'button',
-          onclick: function () { startCall(conv); }
-        }, [icon('call'), el('span', { text: '語音通話' })])
-      ]));
-    }
+    // 通話改由右上角綠色按鈕發起，避免手機底部再多一條藍鈕擠壓輸入區
     scrollToBottom();
   }
 

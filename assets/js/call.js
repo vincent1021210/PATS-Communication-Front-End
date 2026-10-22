@@ -401,7 +401,7 @@ var PatsCall = (function () {
   function restart() {
     if (!session || !session.pc) return;
     if (session.retried) {
-      finish('無法穿越網路。跨網段請架設 TURN（Coturn）。');
+      finish('目前無法建立語音連線（不同網路／4G 常見）。請雙方開同一 Wi‑Fi 再試，或稍後架設 TURN。');
       return;
     }
     session.retried = true;
