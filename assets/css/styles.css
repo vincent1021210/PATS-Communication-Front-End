@@ -832,6 +832,21 @@ select.email-domain {
 .signal-badge.is-wait { background: #fef9c3; color: #854d0e; }
 .signal-badge.is-bad { background: #fee2e2; color: #991b1b; }
 
+.signal-strip {
+  display: none;
+  flex: none;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+.signal-strip.is-ok { background: #dcfce7; color: #166534; }
+.signal-strip.is-wait { background: #fef9c3; color: #854d0e; }
+.signal-strip.is-bad { background: #fee2e2; color: #991b1b; }
+
+.rail-mobile-only { display: none !important; }
+
 .call-layer {
   position: fixed; inset: 0; z-index: 80;
   display: grid; place-items: center; padding: 20px;
@@ -895,60 +910,214 @@ select.email-domain {
   .settings-grid { grid-template-columns: 1fr; }
 }
 
-/* 手機：單欄堆疊 + 底部導覽 */
+/* 手機：單欄內容 + 底部 Tab；聊天時全螢幕 */
 @media (max-width: 720px) {
-  :root { --rail-w: 0px; --list-w: 0px; }
+  :root {
+    --rail-w: 0px;
+    --list-w: 0px;
+    --header-h: 56px;
+    --mobile-tab-h: 58px;
+  }
 
-  .auth { grid-template-columns: 1fr; }
-  .auth-brand { border-right: none; border-bottom: 1px solid var(--line); padding: 20px; }
+  body { overflow: hidden; }
+
+  /* —— 登入頁：品牌精簡、表單為主 —— */
+  .auth {
+    grid-template-columns: 1fr;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+  .auth-brand {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 18px 20px 14px;
+  }
   .auth-brand::after { display: none; }
-  .auth-pitch { margin-top: 18px; }
+  .auth-logo h1 { font-size: 22px; }
+  .auth-pitch { margin-top: 10px; }
+  .auth-pitch h2 { font-size: 18px; margin: 0; }
   .auth-pitch p { display: none; }
-  .auth-note { margin-top: 16px; }
-  .auth-main { padding: 20px 16px 40px; align-items: start; }
-  .auth-card { border: none; box-shadow: none; background: transparent; padding: 20px 0; }
+  .auth-note { margin-top: 12px; font-size: 12px; }
+  .auth-main {
+    padding: 16px 16px calc(28px + env(safe-area-inset-bottom));
+    align-items: start;
+    place-items: start center;
+  }
+  .auth-card {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    padding: 12px 0 24px;
+    max-width: 420px;
+  }
+  .auth-title { font-size: 22px; }
+  .auth-sub { margin-bottom: 18px; }
+  .auth-mark { width: 44px; height: 44px; margin-bottom: 12px; }
 
+  /* —— App 外框 —— */
   .app {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, 1fr) auto;
-    padding-bottom: 0;
+    height: 100dvh;
+    max-height: 100dvh;
   }
   .app[data-list-hidden="true"] { grid-template-columns: 1fr; }
 
+  /* 聊天全螢幕：藏底部 Tab，對話區佔滿 */
+  .app[data-mobile="chat"] {
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .app[data-mobile="chat"] .rail { display: none; }
+
+  .rail-desktop-only { display: none !important; }
+  .rail-mobile-only { display: flex !important; }
+
   .rail {
-    grid-row: 2; grid-column: 1;
-    flex-direction: row; align-items: center;
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
-    border-right: none; border-top: 1px solid var(--line);
+    grid-row: 2;
+    grid-column: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    border-right: none;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: 0 -6px 20px rgba(15, 23, 42, .05);
   }
-  .rail-identity, .rail-spacer { display: none; }
-  .rail-nav, .rail-foot {
-    flex: 1; flex-direction: row; justify-content: space-around;
-    padding-top: 0; width: auto;
-  }
+  .rail-identity,
+  .rail-spacer,
   .rail-foot { display: none; }
-  .rail-link { height: 48px; width: 100%; max-width: 72px; border-radius: var(--r-md); }
 
-  .list-pane, .chat-pane, .settings-pane { grid-row: 1; grid-column: 1; border-right: none; }
+  .rail-nav {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+  }
 
-  /* 由 data-mobile 決定手機上顯示哪一欄 */
-  .app[data-mobile="list"] .chat-pane { display: none; }
-  .app[data-mobile="chat"] .list-pane { display: none; }
-  .app[data-list-hidden="true"] .chat-pane { display: flex; }
+  .rail-link {
+    position: relative;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    width: auto;
+    max-width: none;
+    height: var(--mobile-tab-h);
+    min-height: var(--mobile-tab-h);
+    padding: 6px 2px;
+    border-radius: var(--r-md);
+    font-size: 10px;
+    line-height: 1.2;
+  }
+  .rail-link .material-symbols-outlined { font-size: 22px; }
+  .rail-link .label {
+    display: block;
+    max-width: 100%;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rail-link .count {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    margin-left: 6px;
+  }
+  .rail-link.is-active::before { display: none; }
+  .rail-link.is-active {
+    background: transparent;
+    color: var(--brand-700);
+  }
+  .rail-link.is-active .material-symbols-outlined { color: var(--brand-600); }
+
+  .list-pane,
+  .chat-pane,
+  .settings-pane,
+  #guardian-pane {
+    grid-row: 1;
+    grid-column: 1;
+    border-right: none;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+  }
+
+  .signal-strip { display: block; }
+
+  /* 列表 ↔ 聊天 互斥 */
+  .app[data-mobile="list"] .chat-pane:not(.hidden) { display: none; }
+  .app[data-mobile="chat"] .list-pane:not(.hidden) { display: none; }
+  .app[data-list-hidden="true"] .list-pane { display: none !important; }
+  .app[data-list-hidden="true"] .chat-pane { display: none !important; }
+  .app[data-list-hidden="true"] .settings-pane:not(.hidden),
+  .app[data-list-hidden="true"] #guardian-pane:not(.hidden) {
+    display: block;
+  }
+
+  .pane-head {
+    padding: 10px 12px 10px 14px;
+    min-height: var(--header-h);
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .pane-head h2 { font-size: 18px; }
+  .pane-search { padding: 8px 12px 10px; }
+
+  .conv-list { padding: 0 6px calc(8px + env(safe-area-inset-bottom)); }
+  .conv-item { padding: 12px 10px; min-height: 64px; }
+  .conv-item .title { font-size: 15px; }
+  .conv-item .preview { font-size: 13px; }
 
   .chat-back { display: inline-flex; }
-  .chat-body { padding: 14px 12px; }
-  .msg { max-width: 88%; }
-  .composer { padding: 10px 12px 8px; }
-  .call-bar { display: block; }
+  .chat-head {
+    padding: 8px 10px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    gap: 8px;
+  }
+  .chat-head .title { font-size: 16px; }
+  .chat-body {
+    padding: 12px 12px 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .msg { max-width: 86%; }
+  .msg .avatar { display: none; }
+  .bubble { font-size: 15px; padding: 10px 12px; }
+
+  .composer {
+    gap: 8px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  }
+  .composer textarea {
+    min-height: 40px;
+    font-size: 16px; /* 避免 iOS 聚焦放大 */
+  }
+  .call-bar {
+    display: block;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  }
+  .app[data-mobile="chat"] .call-bar {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
   .chat-head .call-btn {
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
   }
 
-  .settings-inner { padding: 24px 16px 40px; }
+  .settings-inner {
+    padding: 20px 16px calc(28px + env(safe-area-inset-bottom));
+  }
   .settings-title { font-size: 20px; }
+  .settings-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin-bottom: 18px;
+  }
   .settings-actions { flex-direction: column-reverse; }
   .settings-actions .btn { width: 100%; }
 
@@ -956,7 +1125,25 @@ select.email-domain {
   .admin-user-actions { width: 100%; }
   .admin-user-actions .btn { flex: 1; }
 
-  .toast-stack { bottom: 84px; }
+  .modal-backdrop { padding: 12px; align-items: end; }
+  .modal {
+    max-width: none;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  }
+
+  .toast-stack { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .app[data-mobile="chat"] ~ .toast-stack,
+  body:has(.app[data-mobile="chat"]:not(.hidden)) .toast-stack {
+    bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .call-card {
+    width: min(100%, 360px);
+    border-radius: 24px;
+    padding: 28px 20px 24px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

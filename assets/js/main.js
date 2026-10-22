@@ -90,8 +90,7 @@ var PatsMain = (function () {
   }
 
   function paintSignalBadge() {
-    var badge = document.getElementById('signal-badge');
-    if (!badge || !window.PatsCall) return;
+    if (!window.PatsCall) return;
     var st = PatsCall.signalState();
     var map = {
       online: { text: '通話就緒', cls: 'is-ok' },
@@ -101,9 +100,13 @@ var PatsMain = (function () {
       idle: { text: '通話未設定', cls: 'is-bad' }
     };
     var info = map[st] || map.idle;
-    badge.textContent = info.text;
-    badge.className = 'signal-badge ' + info.cls;
-    badge.classList.remove('hidden');
+    ['signal-badge', 'signal-badge-mobile'].forEach(function (id) {
+      var badge = document.getElementById(id);
+      if (!badge) return;
+      badge.textContent = info.text;
+      badge.className = (id === 'signal-badge-mobile' ? 'signal-strip ' : 'signal-badge ') + info.cls;
+      badge.classList.remove('hidden');
+    });
   }
 
   /** 依身分決定側欄要出現哪些入口。 */
@@ -156,13 +159,18 @@ var PatsMain = (function () {
     var fullWidth = isSettings || isGuardian;
 
     app.setAttribute('data-list-hidden', fullWidth ? 'true' : 'false');
+    $('#list-pane').classList.toggle('hidden', fullWidth);
     $('#chat-pane').classList.toggle('hidden', fullWidth);
     $('#settings-pane').classList.toggle('hidden', !isSettings);
     $('#guardian-pane').classList.toggle('hidden', !isGuardian);
 
-    if (isGuardian) return;
+    if (isGuardian) {
+      setMobilePane('list');
+      return;
+    }
 
     if (isSettings) {
+      setMobilePane('list');
       PatsSettings.render(SETTINGS_SECTION[view]);
       return;
     }
@@ -198,6 +206,16 @@ var PatsMain = (function () {
     PATS.$$('.rail-link[data-action="logout"]').forEach(function (link) {
       link.addEventListener('click', function () { setView('switch'); });
     });
+    var more = document.getElementById('rail-more');
+    if (more) {
+      more.addEventListener('click', function (event) {
+        PATS.openMenu(event.currentTarget, [
+          { label: '通話設定', icon: 'call', onSelect: function () { setView('call'); } },
+          { label: '個人資料', icon: 'person', onSelect: function () { setView('profile'); } },
+          { label: '登出', icon: 'logout', tone: 'danger', onSelect: function () { setView('switch'); } }
+        ]);
+      });
+    }
   }
 
   function bindResize() {

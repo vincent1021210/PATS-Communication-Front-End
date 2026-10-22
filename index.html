@@ -14,7 +14,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=archive,arrow_back,badge,call,call_end,chat,chat_bubble,chevron_right,child_care,delete_sweep,edit_square,error,forum,group_add,groups,history,history_edu,inbox,key,lock,lock_reset,login,logout,mail,manage_accounts,mark_email_read,mic,mic_off,mop,more_horiz,more_vert,person,person_add,pin,refresh,report,save,school,search,send,settings,shield,storage,supervisor_account,unarchive,visibility,visibility_off&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/styles.css?v=20261022c">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20261022m">
 </head>
 
 <body>
@@ -323,7 +323,7 @@
         </button>
         <button class="rail-link" data-view="group">
           <span class="material-symbols-outlined">groups</span>
-          <span class="label">群組討論</span>
+          <span class="label">群組</span>
           <span class="badge count hidden" data-count="group">0</span>
         </button>
         <button class="rail-link" data-view="archive">
@@ -334,9 +334,13 @@
           <span class="material-symbols-outlined">settings</span>
           <span class="label">設定</span>
         </button>
-        <button class="rail-link" data-view="call">
+        <button class="rail-link rail-desktop-only" data-view="call">
           <span class="material-symbols-outlined">call</span>
           <span class="label">通話設定</span>
+        </button>
+        <button type="button" class="rail-link rail-mobile-only" id="rail-more" aria-label="更多">
+          <span class="material-symbols-outlined">more_horiz</span>
+          <span class="label">更多</span>
         </button>
       </div>
 
@@ -344,11 +348,11 @@
 
       <div class="rail-foot">
         <div id="signal-badge" class="signal-badge hidden" aria-live="polite">通話未設定</div>
-        <button class="rail-link" data-view="profile">
+        <button class="rail-link rail-desktop-only" data-view="profile">
           <span class="material-symbols-outlined">person</span>
           <span class="label">個人資料</span>
         </button>
-        <button class="rail-link is-danger" data-action="logout">
+        <button class="rail-link is-danger rail-desktop-only" data-action="logout">
           <span class="material-symbols-outlined">logout</span>
           <span class="label">登出</span>
         </button>
@@ -357,6 +361,7 @@
 
     <!-- 對話列表 -->
     <section class="list-pane" id="list-pane">
+      <div id="signal-badge-mobile" class="signal-strip hidden" aria-live="polite"></div>
       <header class="pane-head">
         <h2 id="list-title">私人訊息</h2>
         <span class="hint" id="list-hint"></span>
@@ -442,14 +447,14 @@
   <div class="toast-stack" id="toast-root"></div>
 
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-  <script src="assets/js/config.js?v=20261022c"></script>
-  <script src="assets/js/core.js?v=20261022c"></script>
-  <script src="assets/js/auth.js?v=20261022c"></script>
-  <script src="assets/js/AudioStreamManager.js?v=20261022c"></script>
-  <script src="assets/js/WebRTCManager.js?v=20261022c"></script>
-  <script src="assets/js/call.js?v=20261022c"></script>
-  <script src="assets/js/chat.js?v=20261022c"></script>
-  <script src="assets/js/settings.js?v=20261022c"></script>
-  <script src="assets/js/main.js?v=20261022c"></script>
+  <script src="assets/js/config.js?v=20261022m"></script>
+  <script src="assets/js/core.js?v=20261022m"></script>
+  <script src="assets/js/auth.js?v=20261022m"></script>
+  <script src="assets/js/AudioStreamManager.js?v=20261022m"></script>
+  <script src="assets/js/WebRTCManager.js?v=20261022m"></script>
+  <script src="assets/js/call.js?v=20261022m"></script>
+  <script src="assets/js/chat.js?v=20261022m"></script>
+  <script src="assets/js/settings.js?v=20261022m"></script>
+  <script src="assets/js/main.js?v=20261022m"></script>
 </body>
 </html>
