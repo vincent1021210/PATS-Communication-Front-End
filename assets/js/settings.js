@@ -22,7 +22,6 @@ var PatsSettings = (function () {
   var TABS = [
     { id: 'archive', label: '封存設定', view: 'settings' },
     { id: 'account', label: '帳號安全', view: 'profile' },
-    { id: 'call', label: '通話', view: 'call' },
     { id: 'admin', label: '帳號管理', view: 'admin', adminOnly: true },
     { id: 'switch', label: '帳號切換', view: 'switch' }
   ];

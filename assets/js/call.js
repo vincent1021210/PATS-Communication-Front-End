@@ -498,7 +498,7 @@ var PatsCall = (function () {
 
   function dialHint() {
     var url = signalingUrl();
-    if (!url) return '尚未設定通話伺服器。請到「設定 → 通話」填入信令網址。';
+    if (!url) return '尚未設定通話伺服器。請確認 config.js 的 signalingUrl。';
     // 日誌證實：http://192.168.x.x 非安全環境，mediaDevices 不存在
     if (!window.isSecureContext) {
       return '此網址無法使用麥克風。請改用 https://vincent1021210.github.io/ ，或本機 http://127.0.0.1:8766/（不要用 192.168 區網 IP）。';

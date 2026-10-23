@@ -12,7 +12,6 @@ var PatsMain = (function () {
   var SETTINGS_SECTION = {
     settings: 'archive',
     profile: 'account',
-    call: 'call',
     admin: 'admin',
     switch: 'switch'
   };
@@ -167,6 +166,8 @@ var PatsMain = (function () {
   /* ----------------------------------------------------------- 畫面切換 */
 
   function setView(view, options) {
+    // 通話設定 UI 已隱藏；舊連結改導向一般設定
+    if (view === 'call') view = 'settings';
     state.view = view;
     PATS.closeMenu();
 
@@ -231,7 +232,6 @@ var PatsMain = (function () {
     if (more) {
       more.addEventListener('click', function (event) {
         PATS.openMenu(event.currentTarget, [
-          { label: '通話設定', icon: 'call', onSelect: function () { setView('call'); } },
           { label: '個人資料', icon: 'person', onSelect: function () { setView('profile'); } },
           { label: '登出', icon: 'logout', tone: 'danger', onSelect: function () { setView('switch'); } }
         ]);
