@@ -278,7 +278,8 @@ var PatsChat = (function () {
         return;
       }
 
-      if (message.kind === 'group-call') {
+      // kind 可能因舊版 API 未寫入而變成 text；用 body 辨識群組通話邀請
+      if (isGroupCallInvite(message)) {
         container.appendChild(renderGroupCallInvite(message));
         previousSender = '';
         return;
@@ -310,11 +311,24 @@ var PatsChat = (function () {
   }
 
   function parseGroupCallMeta(message) {
+    var raw = message && message.body != null ? String(message.body).trim() : '';
+    if (!raw || raw.charAt(0) !== '{') return null;
     try {
-      var meta = JSON.parse(message && message.body ? message.body : '');
-      if (meta && meta.callId) return meta;
+      var meta = JSON.parse(raw);
+      if (meta && meta.callId) {
+        return {
+          callId: String(meta.callId),
+          groupName: String(meta.groupName || '群組通話')
+        };
+      }
     } catch (e) { /* ignore */ }
     return null;
+  }
+
+  function isGroupCallInvite(message) {
+    if (!message) return false;
+    if (message.kind === 'group-call') return true;
+    return !!parseGroupCallMeta(message);
   }
 
   function renderGroupCallInvite(message) {
@@ -362,6 +376,9 @@ var PatsChat = (function () {
     };
     PATS.rpc('sendMessage', payload)
       .then(function (message) {
+        // 即使舊後端回傳 kind=text，前端仍強制當邀請卡渲染
+        message.kind = 'group-call';
+        if (!message.body) message.body = payload.body;
         if (state.activeId === conversationId) {
           appendMessages([message], { optimistic: false });
           scrollToBottom();
