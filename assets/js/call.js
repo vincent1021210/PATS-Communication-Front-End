@@ -633,6 +633,7 @@ var PatsCall = (function () {
     setStatus('撥號中…');
     setActions('dialing');
     showLayer();
+    if (window.CallTones) CallTones.startDialing();
 
     openMedia(token).then(function () {
       if (!alive(token)) return null;
@@ -669,6 +670,7 @@ var PatsCall = (function () {
     setStatus('來電…');
     setActions('ringing');
     showLayer();
+    if (window.CallTones) CallTones.startRinging();
     try {
       if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
     } catch (e) { /* ignore */ }
@@ -678,6 +680,7 @@ var PatsCall = (function () {
     if (!session || session.phase !== 'ringing') return;
     var token = generation;
     var offer = session.offer;
+    if (window.CallTones) CallTones.stop();
     setStatus('接通中…');
     setActions('connecting');
 
@@ -725,6 +728,7 @@ var PatsCall = (function () {
     });
     // #endregion
     if (!sameCall(payload) || !session || !session.pc) return;
+    if (window.CallTones) CallTones.stop();
     session.phase = 'connecting';
     setStatus('接通中…');
     setActions('connecting');
@@ -774,6 +778,7 @@ var PatsCall = (function () {
     setActions('active');
     startTimer();
     bindCallPresence();
+    if (window.CallTones) CallTones.playConnected();
   }
 
   function onConnectionState(state) {
@@ -944,6 +949,7 @@ var PatsCall = (function () {
       signalState: signalState
     });
     // #endregion
+    var hadSession = !!session;
     generation += 1;
     stopTimer();
     unbindCallPresence();
@@ -961,6 +967,7 @@ var PatsCall = (function () {
       audio.srcObject = null;
     }
     hideLayer();
+    if (hadSession && window.CallTones) CallTones.playEnded();
     if (message) {
       var tone = /斷線|中斷|失敗|無法|拒絕|不在/.test(message) ? 'error' : undefined;
       PATS.toast(message, tone);
