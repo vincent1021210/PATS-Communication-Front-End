@@ -460,8 +460,9 @@ var PatsCall = (function () {
       finish('對方已拒絕');
     });
     socket.on('hung-up', function (payload) {
-      if (session && session.isGroup && payload && payload.from) {
-        dropGroupPeer(payload.from, null);
+      if (session && session.isGroup) {
+        // 群組：只拆與離開者的連線；是否結束整通交由 group-peer-left（含 remaining）
+        if (payload && payload.from) dropGroupPeer(payload.from, null);
         return;
       }
       finish('通話已結束');
@@ -470,7 +471,12 @@ var PatsCall = (function () {
       if (!session) return;
       if (session.isGroup && payload && payload.from) {
         dropGroupPeer(payload.from, null);
-        updateGroupStatus();
+        // 信令斷線時可能沒有 group-peer-left；若還有其他 link 就繼續
+        if (groupLinkCount() === 0 && (session.wasActive || session.phase === 'active')) {
+          finish('群組通話已結束（已無其他成員）');
+        } else {
+          updateGroupStatus();
+        }
         return;
       }
       if (payload && payload.from && session.peerId && payload.from !== session.peerId) return;
@@ -614,8 +620,36 @@ var PatsCall = (function () {
     removeRemoteAudio(peerId);
     updateGroupStatus();
     if (toastMsg) PATS.toast(toastMsg);
-    if (groupLinkCount() === 0 && (session.wasActive || session.phase === 'active')) {
-      finish('群組通話已結束');
+    // 不在此結束整通群組通話：其餘成員應可繼續
+  }
+
+  /** 與仍在房間內、尚未連線的成員補建 Mesh */
+  function ensureGroupMesh(remaining) {
+    if (!session || !session.isGroup || !session.stream) return;
+    var me = currentUser && currentUser.id;
+    (remaining || []).forEach(function (peer) {
+      var id = peer && (peer.id || peer);
+      var name = peer && peer.name;
+      if (!id || id === me) return;
+      if (session.links[id] && session.links[id].pc) return;
+      // 用 userId 排序決定誰送 offer，避免雙方同時 offer 撞車
+      if (me && String(me) > String(id)) return;
+      offerToGroupPeer(id, name);
+    });
+  }
+
+  function endGroupIfAlone(remaining) {
+    if (!session || !session.isGroup) return;
+    var me = currentUser && currentUser.id;
+    var others = (remaining || []).filter(function (peer) {
+      var id = peer && (peer.id || peer);
+      return id && id !== me;
+    });
+    if (others.length === 0 && (session.wasActive || session.phase === 'active' || session.phase === 'connecting')) {
+      finish('群組通話已結束（已無其他成員）');
+    } else {
+      ensureGroupMesh(others);
+      updateGroupStatus();
     }
   }
 
@@ -853,6 +887,7 @@ var PatsCall = (function () {
   function onGroupPeerLeft(payload) {
     if (!session || !session.isGroup || !sameCall(payload)) return;
     if (payload && payload.from) dropGroupPeer(payload.from, null);
+    endGroupIfAlone(payload && payload.remaining);
   }
 
   function onGroupDeclined(payload) {
@@ -892,8 +927,14 @@ var PatsCall = (function () {
         },
         onConnectionState: function (state) {
           if (!session || !session.links[peerId]) return;
-          if (state === 'failed' || state === 'closed' || state === 'disconnected') {
-            if (state === 'failed' || state === 'closed') dropGroupPeer(peerId, null);
+          // 單一連線失敗只移除該成員，不結束整通群組通話
+          if (state === 'failed' || state === 'closed') {
+            dropGroupPeer(peerId, null);
+            if (groupLinkCount() === 0 && (session.wasActive || session.phase === 'active')) {
+              finish('群組通話已結束（已無其他成員）');
+            } else {
+              updateGroupStatus();
+            }
           }
         }
       });

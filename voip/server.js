@@ -57,8 +57,15 @@ function leaveRoom(userId, callId) {
   var room = callId && rooms.get(callId);
   if (!room || !room.members.has(userId)) return;
   room.members.delete(userId);
+  var remaining = roomPeerList(room);
+  // 一人離開後房間仍保留；其餘成員可繼續通話
   room.members.forEach(function (peerId) {
-    emitToUser(peerId, 'group-peer-left', { callId: callId, from: userId });
+    emitToUser(peerId, 'group-peer-left', {
+      callId: callId,
+      from: userId,
+      remaining: remaining,
+      groupName: room.groupName
+    });
   });
   if (room.members.size === 0) rooms.delete(callId);
 }
