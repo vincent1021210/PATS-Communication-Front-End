@@ -291,7 +291,7 @@ var PatsCall = (function () {
       var sec = seconds % 60;
       var clock = (min < 10 ? '0' : '') + min + ':' + (sec < 10 ? '0' : '') + sec;
       if (session && session.isGroup) {
-        setStatus(groupLinkCount() + ' 人 · ' + clock);
+        setStatus(groupParticipantCount() + ' 人 · ' + clock);
       } else {
         setStatus(clock);
       }
@@ -599,15 +599,36 @@ var PatsCall = (function () {
     return Object.keys(session.links).length;
   }
 
+  /** 畫面顯示的通話人數（含自己） */
+  function groupParticipantCount() {
+    if (!session || !session.isGroup) return 0;
+    if (typeof session.roomCount === 'number' && session.roomCount > 0) {
+      return session.roomCount;
+    }
+    // links = 已連上的對方；再加自己
+    return groupLinkCount() + 1;
+  }
+
+  function setGroupRoomCount(count) {
+    if (!session || !session.isGroup) return;
+    var n = Number(count);
+    if (!isFinite(n) || n < 1) n = 1;
+    session.roomCount = n;
+  }
+
   function updateGroupStatus() {
     if (!session || !session.isGroup) return;
     paintPeer(session.groupName || '群組通話');
-    var n = groupLinkCount();
+    var n = groupParticipantCount();
     if (session.phase === 'active' || session.wasActive) {
       if (!timerId) startTimer();
       return;
     }
-    setStatus(n ? ('已接通 ' + n + ' 人') : (session.phase === 'ringing' ? '群組來電…' : '群組撥號中…'));
+    if (session.phase === 'ringing') {
+      setStatus('群組來電…');
+      return;
+    }
+    setStatus(n > 1 ? ('通話中 ' + n + ' 人') : '群組撥號中…');
   }
 
   function dropGroupPeer(peerId, toastMsg) {
@@ -880,6 +901,8 @@ var PatsCall = (function () {
   function onGroupPeerJoined(payload) {
     if (!session || !session.isGroup || !sameCall(payload)) return;
     if (!payload.userId || payload.userId === (currentUser && currentUser.id)) return;
+    setGroupRoomCount(Math.max(groupParticipantCount() + 1, groupLinkCount() + 2));
+    updateGroupStatus();
     // 既有成員向新人送 offer
     offerToGroupPeer(payload.userId, payload.name);
   }
@@ -887,6 +910,9 @@ var PatsCall = (function () {
   function onGroupPeerLeft(payload) {
     if (!session || !session.isGroup || !sameCall(payload)) return;
     if (payload && payload.from) dropGroupPeer(payload.from, null);
+    if (payload && payload.remaining) {
+      setGroupRoomCount(payload.remaining.length);
+    }
     endGroupIfAlone(payload && payload.remaining);
   }
 
@@ -917,6 +943,7 @@ var PatsCall = (function () {
         onTrack: function (remote) {
           attachRemoteAudio(peerId, remote);
           link.phase = 'active';
+          setGroupRoomCount(Math.max(groupParticipantCount(), groupLinkCount() + 1));
           if (!session.wasActive) {
             session.wasActive = true;
             session.phase = 'active';
@@ -1111,6 +1138,7 @@ var PatsCall = (function () {
           return;
         }
         if (ack.groupName) session.groupName = ack.groupName;
+        setGroupRoomCount(((ack.peers && ack.peers.length) || 0) + 1);
         paintPeer(session.groupName || '群組通話');
         updateGroupStatus();
         // 既有成員會向我們送 offer
@@ -1139,6 +1167,7 @@ var PatsCall = (function () {
             return;
           }
           if (ack.groupName) session.groupName = ack.groupName;
+          setGroupRoomCount(((ack.peers && ack.peers.length) || 0) + 1);
           paintPeer(session.groupName || '群組通話');
           updateGroupStatus();
           // 既有成員會向我們送 offer（incoming-call）；此處只需等待
