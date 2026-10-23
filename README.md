@@ -293,4 +293,9 @@ python -m http.server 8080
 - 試算表適合中小型團隊；訊息量很大時建議改接 Firestore 或 Cloud SQL。
 - Apps Script 網頁應用程式有每日執行時間配額，輪詢頻率請視使用人數調整
   （在 `chat.js` 的 `POLL_INTERVAL_MS`）。
-- 未實作檔案／圖片上傳，`messages.kind` 已預留欄位可擴充。
+- 聊天圖片：`sendChatImage` 上傳至部署者 Google Drive（資料夾 `PATS-Chat-Media`），
+  訊息 `kind: image`、body 為 `IMAGE|<fileId>|<expiresAt>|<w>|<h>`，**暫存 20 天**。
+  部署後請：① 重新授權 Drive 並部署「新版本」網頁應用程式；
+  ② 執行 `ensureChatMediaFolder`（或 `initializeProject`）；
+  ③ 觸發條件 → 時間驅動 → 每日 → `purgeExpiredChatImages`。
+  一般檔案／影片仍未支援。

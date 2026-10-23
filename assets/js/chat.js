@@ -323,6 +323,188 @@ var PatsChat = (function () {
     return bubble;
   }
 
+  /* ---------------------------------------------------------- 聊天圖片 */
+
+  var IMAGE_MAX_EDGE = 1280;
+  var IMAGE_JPEG_QUALITY = 0.72;
+  var IMAGE_MAX_BYTES = 1200000; // 1.2MB
+
+  function isImageMessage(message) {
+    if (!message) return false;
+    if (message.kind === 'image') return true;
+    if (message.localPreview) return true;
+    return String(message.body || '').indexOf('IMAGE|') === 0;
+  }
+
+  /** IMAGE|<fileId>|<expiresAt>|<w>|<h>；fileId 為 EXPIRED 表示已過期 */
+  function parseImageMeta(message) {
+    if (!message) return null;
+    if (message.localPreview) {
+      return {
+        expired: false,
+        fileId: '',
+        expiresAt: '',
+        width: message.width || 0,
+        height: message.height || 0,
+        previewUrl: message.localPreview
+      };
+    }
+    var raw = String(message.body || '');
+    if (raw.indexOf('IMAGE|') !== 0) return null;
+    var parts = raw.split('|');
+    var fileId = parts[1] || '';
+    return {
+      expired: fileId === 'EXPIRED',
+      fileId: fileId === 'EXPIRED' ? '' : fileId,
+      expiresAt: parts[2] || '',
+      width: Number(parts[3]) || 0,
+      height: Number(parts[4]) || 0,
+      previewUrl: ''
+    };
+  }
+
+  function driveImageUrl(fileId, size) {
+    if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return '';
+    var sz = size || 'w1000';
+    return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=' + sz;
+  }
+
+  function openImageViewer(url) {
+    if (!url) return;
+    var root = $('#modal-root');
+    if (!root) return;
+    function close() { root.innerHTML = ''; }
+    var img = el('img', { class: 'img-viewer-pic', src: url, alt: '圖片' });
+    img.addEventListener('click', function (e) { e.stopPropagation(); });
+    var backdrop = el('div', {
+      class: 'img-viewer-backdrop',
+      onclick: close,
+      role: 'dialog',
+      'aria-label': '圖片預覽'
+    }, [img]);
+    root.innerHTML = '';
+    root.appendChild(backdrop);
+  }
+
+  function renderImageBubble(message) {
+    var meta = parseImageMeta(message);
+    var bubble = el('div', { class: 'bubble is-image' });
+    if (!meta || meta.expired) {
+      bubble.appendChild(el('div', {
+        class: 'msg-image-expired',
+        text: '圖片已過期（保存 20 天）'
+      }));
+      return bubble;
+    }
+    var src = meta.previewUrl || driveImageUrl(meta.fileId, 'w640');
+    if (!src) {
+      bubble.appendChild(el('div', { class: 'msg-image-expired', text: '無法顯示圖片' }));
+      return bubble;
+    }
+    var img = el('img', {
+      class: 'msg-image',
+      src: src,
+      alt: '圖片',
+      loading: 'lazy'
+    });
+    if (meta.previewUrl) img.setAttribute('data-blob', meta.previewUrl);
+    img.addEventListener('click', function () {
+      var full = meta.previewUrl || driveImageUrl(meta.fileId, 'w1600');
+      openImageViewer(full || src);
+    });
+    bubble.appendChild(img);
+    return bubble;
+  }
+
+  function applyImageToPendingNode(node, message) {
+    if (!node || !message) return;
+    var img = node.querySelector('img.msg-image');
+    if (!img) return;
+    var blob = img.getAttribute('data-blob');
+    if (blob) {
+      try { URL.revokeObjectURL(blob); } catch (e) { /* ignore */ }
+      img.removeAttribute('data-blob');
+    }
+    var meta = parseImageMeta(message);
+    if (!meta || meta.expired) {
+      var bubble = node.querySelector('.bubble');
+      if (bubble) {
+        bubble.innerHTML = '';
+        bubble.appendChild(el('div', {
+          class: 'msg-image-expired',
+          text: '圖片已過期（保存 20 天）'
+        }));
+      }
+      return;
+    }
+    var url = driveImageUrl(meta.fileId, 'w640');
+    if (url) img.src = url;
+  }
+
+  function compressImageFile(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file || !/^image\//.test(file.type || '')) {
+        reject(PATS.fail('IMAGE_BAD_TYPE'));
+        return;
+      }
+      var url = URL.createObjectURL(file);
+      var image = new Image();
+      image.onload = function () {
+        try {
+          var w = image.naturalWidth || image.width;
+          var h = image.naturalHeight || image.height;
+          if (!w || !h) {
+            URL.revokeObjectURL(url);
+            reject(PATS.fail('IMAGE_BAD_TYPE'));
+            return;
+          }
+          var scale = Math.min(1, IMAGE_MAX_EDGE / Math.max(w, h));
+          var tw = Math.max(1, Math.round(w * scale));
+          var th = Math.max(1, Math.round(h * scale));
+          var canvas = document.createElement('canvas');
+          canvas.width = tw;
+          canvas.height = th;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(image, 0, 0, tw, th);
+          URL.revokeObjectURL(url);
+          canvas.toBlob(function (blob) {
+            if (!blob) {
+              reject(PATS.fail('IMAGE_BAD_TYPE'));
+              return;
+            }
+            if (blob.size > IMAGE_MAX_BYTES) {
+              reject(PATS.fail('IMAGE_TOO_LARGE'));
+              return;
+            }
+            var reader = new FileReader();
+            reader.onload = function () {
+              var dataUrl = String(reader.result || '');
+              var comma = dataUrl.indexOf(',');
+              var b64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+              resolve({
+                dataBase64: b64,
+                mime: 'image/jpeg',
+                width: tw,
+                height: th,
+                previewUrl: URL.createObjectURL(blob)
+              });
+            };
+            reader.onerror = function () { reject(PATS.fail('IMAGE_BAD_TYPE')); };
+            reader.readAsDataURL(blob);
+          }, 'image/jpeg', IMAGE_JPEG_QUALITY);
+        } catch (err) {
+          try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+          reject(PATS.fail('IMAGE_BAD_TYPE'));
+        }
+      };
+      image.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(PATS.fail('IMAGE_BAD_TYPE'));
+      };
+      image.src = url;
+    });
+  }
+
   function renderMessages(container, messages, appending) {
     var lastDay = appending ? thread.day : '';
     var previousSender = appending ? thread.sender : '';
@@ -359,18 +541,21 @@ var PatsChat = (function () {
       previousSender = message.senderId;
 
       var showSender = !message.mine && !isTail && state.activeType === 'group';
+      var content = isImageMessage(message) ? renderImageBubble(message) : bubbleNode(message.body);
 
       container.appendChild(el('div', {
         class: 'msg' + (message.mine ? ' is-mine' : '') + (isTail ? ' is-tail' : '') +
-          (message.pending ? ' is-pending' : ''),
+          (message.pending ? ' is-pending' : '') +
+          (isImageMessage(message) ? ' is-image-msg' : ''),
         'data-id': message.id,
-        'data-sender': message.senderId || ''
+        'data-sender': message.senderId || '',
+        'data-kind': isImageMessage(message) ? 'image' : (message.kind || 'text')
       }, [
         isTail ? el('div', { class: 'avatar', style: 'visibility:hidden' })
                : PATS.avatarNode(message.senderName, message.senderAvatar),
         el('div', { class: 'stack' }, [
           showSender ? el('div', { class: 'sender', text: message.senderName }) : null,
-          bubbleNode(message.body),
+          content,
           el('div', { class: 'time', text: PATS.formatTime(message.createdAt) })
         ])
       ]));
@@ -544,12 +729,20 @@ var PatsChat = (function () {
     if (!body || !message.mine) return false;
     var nodes = body.querySelectorAll('.msg.is-pending');
     for (var i = 0; i < nodes.length; i++) {
-      var bubble = nodes[i].querySelector('.bubble');
-      if (!bubble || bubble.textContent !== message.body) continue;
-      nodes[i].setAttribute('data-id', message.id);
-      nodes[i].classList.remove('is-pending');
-      var time = nodes[i].querySelector('.time');
+      var node = nodes[i];
+      var bubble = node.querySelector('.bubble');
+      if (!bubble) continue;
+      var pendingImage = node.getAttribute('data-kind') === 'image';
+      if (isImageMessage(message)) {
+        if (!pendingImage) continue;
+      } else if (bubble.textContent !== message.body) {
+        continue;
+      }
+      node.setAttribute('data-id', message.id);
+      node.classList.remove('is-pending');
+      var time = node.querySelector('.time');
       if (time) time.textContent = PATS.formatTime(message.createdAt);
+      if (isImageMessage(message)) applyImageToPendingNode(node, message);
       return true;
     }
     return false;
@@ -562,14 +755,29 @@ var PatsChat = (function () {
       placeholder: '輸入訊息…',
       'aria-label': '訊息內容'
     });
+    var fileInput = el('input', {
+      type: 'file',
+      accept: 'image/*',
+      class: 'hidden',
+      'aria-hidden': 'true',
+      tabIndex: '-1'
+    });
+    var imageButton = el('button', {
+      class: 'composer-attach', type: 'button',
+      title: '傳送圖片', 'aria-label': '傳送圖片'
+    }, [icon('image')]);
     var sendButton = el('button', {
       class: 'send', type: 'submit', 'aria-label': '傳送', disabled: 'disabled'
     }, [icon('send')]);
 
+    function syncSend() {
+      sendButton.disabled = !textarea.value.trim();
+    }
+
     textarea.addEventListener('input', function () {
       textarea.style.height = 'auto';
       textarea.style.height = Math.min(textarea.scrollHeight, 160) + 'px';
-      sendButton.disabled = !textarea.value.trim();
+      syncSend();
     });
     textarea.addEventListener('keydown', function (event) {
       if (event.key === 'Enter' && !event.shiftKey) {
@@ -578,7 +786,18 @@ var PatsChat = (function () {
       }
     });
 
-    var form = el('form', { class: 'composer' }, [textarea, sendButton]);
+    imageButton.addEventListener('click', function () {
+      if (imageButton.disabled) return;
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', function () {
+      var file = fileInput.files && fileInput.files[0];
+      fileInput.value = '';
+      if (!file) return;
+      sendChatImage(file, imageButton);
+    });
+
+    var form = el('form', { class: 'composer' }, [imageButton, fileInput, textarea, sendButton]);
     form.addEventListener('submit', function (event) {
       event.preventDefault();
       var body = textarea.value.trim();
@@ -847,16 +1066,84 @@ var PatsChat = (function () {
       });
   }
 
+  function sendChatImage(file, imageButton) {
+    var conversationId = state.activeId;
+    if (!conversationId) return;
+    var user = state.user || {};
+    if (imageButton) imageButton.disabled = true;
+    PATS.toast('傳送圖片中…');
+
+    compressImageFile(file).then(function (packed) {
+      var tempId = 'pending-' + Date.now();
+      var createdAt = new Date().toISOString();
+      appendMessages([{
+        id: tempId,
+        body: '',
+        kind: 'image',
+        localPreview: packed.previewUrl,
+        width: packed.width,
+        height: packed.height,
+        createdAt: createdAt,
+        mine: true,
+        pending: true,
+        senderId: user.id,
+        senderName: user.displayName || user.username || '',
+        senderAvatar: user.avatarUrl || ''
+      }], { optimistic: true });
+      touchInboxPreview(conversationId, '傳送了圖片', createdAt);
+
+      return PATS.rpc('sendChatImage', {
+        conversationId: conversationId,
+        dataBase64: packed.dataBase64,
+        mime: packed.mime,
+        width: packed.width,
+        height: packed.height
+      }).then(function (message) {
+        if (state.activeId !== conversationId) {
+          try { URL.revokeObjectURL(packed.previewUrl); } catch (e) { /* ignore */ }
+          return;
+        }
+        settlePending(tempId, message);
+        return refreshList();
+      }).catch(function (err) {
+        var node = messageNode(tempId);
+        if (node) {
+          var img = node.querySelector('img.msg-image');
+          var blob = img && img.getAttribute('data-blob');
+          if (blob) {
+            try { URL.revokeObjectURL(blob); } catch (e) { /* ignore */ }
+          }
+          removeMessageNode(tempId);
+        } else {
+          try { URL.revokeObjectURL(packed.previewUrl); } catch (e) { /* ignore */ }
+        }
+        handleError(err);
+      });
+    }).catch(function (err) {
+      handleError(err);
+    }).then(function () {
+      if (imageButton) imageButton.disabled = false;
+    });
+  }
+
   function settlePending(tempId, message) {
     var pending = messageNode(tempId);
     var existing = messageNode(message.id);
     if (existing) {
-      if (pending) removeMessageNode(tempId);
+      if (pending) {
+        var img = pending.querySelector('img.msg-image');
+        var blob = img && img.getAttribute('data-blob');
+        if (blob) {
+          try { URL.revokeObjectURL(blob); } catch (e) { /* ignore */ }
+        }
+        removeMessageNode(tempId);
+      }
     } else if (pending) {
       pending.setAttribute('data-id', message.id);
       pending.classList.remove('is-pending');
       var time = pending.querySelector('.time');
       if (time) time.textContent = PATS.formatTime(message.createdAt);
+      if (isImageMessage(message)) applyImageToPendingNode(pending, message);
       syncThreadCursor();
     } else {
       appendMessages([message]);
@@ -867,6 +1154,11 @@ var PatsChat = (function () {
   function removeMessageNode(id) {
     var node = messageNode(id);
     if (!node) return;
+    var img = node.querySelector('img.msg-image');
+    var blob = img && img.getAttribute('data-blob');
+    if (blob) {
+      try { URL.revokeObjectURL(blob); } catch (e) { /* ignore */ }
+    }
     var prev = node.previousElementSibling;
     node.remove();
     if (prev && prev.classList.contains('msg-day')) {

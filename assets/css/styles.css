@@ -674,6 +674,18 @@ select.email-domain {
   background: var(--surface);
   border-top: 1px solid var(--line);
 }
+.composer-attach {
+  display: grid; place-items: center; flex: none;
+  width: 42px; height: 42px; border-radius: var(--r-full);
+  color: var(--ink-500); background: var(--surface-sunk);
+  border: 1px solid var(--line);
+  transition: background-color .15s var(--ease), color .15s var(--ease);
+}
+.composer-attach:hover:not(:disabled) {
+  color: var(--brand-700); background: var(--brand-50);
+}
+.composer-attach:disabled { opacity: .45; cursor: not-allowed; }
+.composer-attach .material-symbols-outlined { font-size: 22px; }
 .composer textarea {
   flex: 1; min-height: 42px; max-height: 160px; padding: 10px 14px;
   border: 1px solid var(--line); border-radius: var(--r-lg);
@@ -692,6 +704,50 @@ select.email-domain {
 }
 .composer .send:hover:not(:disabled) { background: var(--brand-700); }
 .composer .send:disabled { background: var(--ink-300); cursor: not-allowed; }
+
+.bubble.is-image {
+  padding: 4px; overflow: hidden;
+  background: transparent; border: 0; box-shadow: none;
+}
+.msg.is-mine .bubble.is-image { background: transparent; border: 0; }
+.msg-image {
+  display: block;
+  max-width: min(240px, 70vw);
+  max-height: 320px;
+  width: auto; height: auto;
+  border-radius: 12px;
+  object-fit: cover;
+  cursor: zoom-in;
+  background: var(--surface-sunk);
+}
+.msg-image-expired {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-sunk);
+  color: var(--ink-500);
+  font-size: 13px;
+  border: 1px dashed var(--line);
+}
+.msg.is-mine .msg-image-expired {
+  background: rgba(255,255,255,.16);
+  color: rgba(255,255,255,.9);
+  border-color: rgba(255,255,255,.28);
+}
+.img-viewer-backdrop {
+  position: fixed; inset: 0; z-index: 80;
+  display: grid; place-items: center;
+  padding: 24px;
+  background: rgba(0,0,0,.78);
+  cursor: zoom-out;
+}
+.img-viewer-pic {
+  max-width: min(960px, 100%);
+  max-height: min(90vh, 100%);
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.45);
+  cursor: default;
+}
 
 /* ================================================================ 設定 */
 

@@ -160,6 +160,9 @@ function previewText_(message, users) {
       /["']?callId["']?\s*[:=]/.test(String(message.body || ''))) {
     return name ? name + '：發起了群組通話' : '發起了群組通話';
   }
+  if (message.kind === 'image' || String(message.body || '').indexOf('IMAGE|') === 0) {
+    return name ? name + '：傳送了圖片' : '傳送了圖片';
+  }
   return name ? name + '：' + body : body;
 }
 
@@ -290,6 +293,8 @@ function apiSendMessage_(user, payload) {
   if (body.length > 4000) throw new Error('MESSAGE_TOO_LONG');
 
   var kind = String(payload.kind || 'text');
+  // 圖片只能走 sendChatImage（寫入 Drive）；禁止用文字 API 偽造
+  if (kind === 'image') throw new Error('USE_SEND_CHAT_IMAGE');
   if (kind !== 'text' && kind !== 'group-call') kind = 'text';
   if (kind === 'group-call') {
     var meta = parseJson_(body, null);
@@ -332,6 +337,149 @@ function apiSendMessage_(user, payload) {
     senderName: user.displayName || user.username,
     senderAvatar: user.avatarUrl || ''
   };
+}
+
+/* -------------------------------------------------------------- 聊天圖片 */
+
+var CHAT_MEDIA_FOLDER_PROP = 'CHAT_MEDIA_FOLDER_ID';
+var CHAT_IMAGE_RETENTION_DAYS = 20;
+var CHAT_IMAGE_MAX_BYTES = 1500000; // 約 1.5MB（前端壓完再擋一層）
+
+function ensureChatMediaFolder_() {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty(CHAT_MEDIA_FOLDER_PROP);
+  if (id) {
+    try {
+      DriveApp.getFolderById(id);
+      return id;
+    } catch (err) {
+      // 資料夾被刪時重建
+    }
+  }
+  var folder = DriveApp.createFolder('PATS-Chat-Media');
+  props.setProperty(CHAT_MEDIA_FOLDER_PROP, folder.getId());
+  return folder.getId();
+}
+
+function decodeChatImageBase64_(raw) {
+  var s = String(raw || '').trim();
+  var comma = s.indexOf(',');
+  if (s.indexOf('data:') === 0 && comma > 0) s = s.slice(comma + 1);
+  s = s.replace(/\s+/g, '');
+  if (!s) throw new Error('EMPTY_MESSAGE');
+  try {
+    return Utilities.base64Decode(s);
+  } catch (err) {
+    throw new Error('IMAGE_BAD_TYPE');
+  }
+}
+
+/**
+ * 壓縮後的圖片上傳到 Drive，訊息 body 存短格式：
+ * IMAGE|<fileId>|<expiresAtIso>|<w>|<h>
+ */
+function apiSendChatImage_(user, payload) {
+  requireApiContext_(user);
+  denyParent_(user);
+  var conversationId = payload.conversationId;
+  assertMember_(user.id, conversationId);
+
+  var mime = String(payload.mime || 'image/jpeg').toLowerCase();
+  if (mime !== 'image/jpeg' && mime !== 'image/jpg') {
+    // 前端應已壓成 JPEG；其餘一律拒
+    throw new Error('IMAGE_BAD_TYPE');
+  }
+  mime = 'image/jpeg';
+
+  var width = Math.floor(Number(payload.width) || 0);
+  var height = Math.floor(Number(payload.height) || 0);
+  if (width < 1 || height < 1 || width > 8000 || height > 8000) {
+    throw new Error('IMAGE_BAD_TYPE');
+  }
+
+  var bytes = decodeChatImageBase64_(payload.dataBase64);
+  if (!bytes || !bytes.length) throw new Error('EMPTY_MESSAGE');
+  if (bytes.length > CHAT_IMAGE_MAX_BYTES) throw new Error('IMAGE_TOO_LARGE');
+
+  var folderId = ensureChatMediaFolder_();
+  var folder = DriveApp.getFolderById(folderId);
+  var blob = Utilities.newBlob(bytes, mime, 'chat-' + newId_() + '.jpg');
+  var file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  var expiresAt = new Date(Date.now() + CHAT_IMAGE_RETENTION_DAYS * 86400 * 1000).toISOString();
+  var body = 'IMAGE|' + file.getId() + '|' + expiresAt + '|' + width + '|' + height;
+
+  var message = withLock_(function () {
+    var created = dbInsert_('messages', {
+      id: newId_(),
+      conversationId: conversationId,
+      senderId: user.id,
+      body: body,
+      kind: 'image',
+      createdAt: nowIso_(),
+      deleted: 'false'
+    });
+    dbUpdate_('conversations', conversationId, { lastMessageAt: created.createdAt });
+    unarchiveForAll_(conversationId);
+    apiMarkRead_(user, { conversationId: conversationId });
+    return created;
+  });
+
+  return {
+    id: message.id,
+    body: message.body,
+    kind: 'image',
+    fileId: file.getId(),
+    expiresAt: expiresAt,
+    width: width,
+    height: height,
+    createdAt: message.createdAt,
+    mine: true,
+    senderId: user.id,
+    senderName: user.displayName || user.username,
+    senderAvatar: user.avatarUrl || ''
+  };
+}
+
+/**
+ * 刪除已滿 20 天的聊天圖片，並把訊息改成 IMAGE|EXPIRED|…
+ * 請在 Apps Script「觸發條件」設每日時間驅動執行本函式。
+ */
+function purgeExpiredChatImages() {
+  var now = Date.now();
+  var all = dbAll_('messages');
+  var done = 0;
+  var max = 50;
+  for (var i = 0; i < all.length && done < max; i++) {
+    var m = all[i];
+    if (String(m.kind || '') !== 'image') continue;
+    var raw = String(m.body || '');
+    if (raw.indexOf('IMAGE|') !== 0) continue;
+    var parts = raw.split('|');
+    var fileId = parts[1] || '';
+    var expiresAt = parts[2] || '';
+    var w = parts[3] || '0';
+    var h = parts[4] || '0';
+    if (fileId === 'EXPIRED') continue;
+    var expMs = new Date(expiresAt).getTime();
+    if (!expMs || isNaN(expMs) || expMs > now) continue;
+
+    if (fileId) {
+      try {
+        DriveApp.getFileById(fileId).setTrashed(true);
+      } catch (err) {
+        // 檔案已刪或無權限：仍標記過期，避免卡住
+      }
+    }
+    dbUpdate_('messages', m.id, {
+      body: 'IMAGE|EXPIRED|' + expiresAt + '|' + w + '|' + h
+    });
+    done++;
+  }
+  var report = 'purgeExpiredChatImages：本次處理 ' + done + ' 則';
+  Logger.log(report);
+  return report;
 }
 
 function apiMarkRead_(user, payload) {

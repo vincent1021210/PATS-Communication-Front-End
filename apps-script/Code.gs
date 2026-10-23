@@ -80,6 +80,7 @@ function privateActions_() {
     listConversations: apiListConversations_,
     listMessages: apiListMessages_,
     sendMessage: apiSendMessage_,
+    sendChatImage: apiSendChatImage_,
     markRead: apiMarkRead_,
     startDirect: apiStartDirect_,
     createGroup: apiCreateGroup_,

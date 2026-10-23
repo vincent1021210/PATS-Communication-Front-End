@@ -10,15 +10,19 @@
  */
 function initializeProject() {
   var url = setup();
+  var mediaFolderId = ensureChatMediaFolder_();
   var userCount = dbAll_('users').length;
 
   var lines = [
     'PATS 初始化完成。',
     '資料庫試算表：' + url,
+    '聊天圖片資料夾 ID：' + mediaFolderId,
     '目前使用者人數：' + userCount,
     'Google 用戶端 ID：' + (googleClientId_() || '（尚未設定，僅開放帳密登入）'),
     // 這行讀得到數字，就代表寄信權限已經授權完成（驗證碼會以授權者的帳號寄出）。
-    '今日還可寄出的信件數：' + MailApp.getRemainingDailyQuota()
+    '今日還可寄出的信件數：' + MailApp.getRemainingDailyQuota(),
+    '',
+    '圖片暫存：請在「觸發條件」新增每日時間驅動，執行 purgeExpiredChatImages。'
   ];
 
   if (userCount === 0) {
@@ -105,6 +109,19 @@ function setupGoogleClientId() {
   var report = '已寫入 GOOGLE_CLIENT_ID：\n' + saved +
     '\n\n請用瀏覽器開部署的 /exec 網址確認 googleClientId 有值，' +
     '\n再回 PATS 網頁強制重新整理後試 Google 登入。';
+  Logger.log(report);
+  return report;
+}
+
+/**
+ * 建立（或讀取）聊天圖片暫存資料夾，並寫入 CHAT_MEDIA_FOLDER_ID。
+ * 可在編輯器單獨執行；initializeProject 也會呼叫。
+ */
+function ensureChatMediaFolder() {
+  var id = ensureChatMediaFolder_();
+  var report = 'CHAT_MEDIA_FOLDER_ID：' + id +
+    '\n\n請確認已授權 Drive，並部署「新版本」網頁應用程式。' +
+    '\n另請新增每日觸發條件執行 purgeExpiredChatImages（圖片暫存 20 天）。';
   Logger.log(report);
   return report;
 }
