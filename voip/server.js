@@ -26,8 +26,30 @@ var io = socketIo(server, {
 /** userId -> { socketId, name } */
 var users = new Map();
 
-/** callId -> { hostId, groupName, members: Set<userId> } */
+/**
+ * callId -> { hostId, groupName, media, members: Set<userId>,
+ *             videoMembers: Set<userId>, videoReserved: Map<userId, 到期時間> }
+ */
 var rooms = new Map();
+
+/** Mesh 架構每人要分別上傳給每位成員，視訊人數與房間人數都要設上限 */
+var MAX_GROUP_VIDEO = 4;
+var MAX_GROUP_MEMBERS = 8;
+var VIDEO_RESERVE_MS = 15000;
+
+function pruneVideoReservations(room) {
+  var now = Date.now();
+  room.videoReserved.forEach(function (expires, id) {
+    if (expires <= now || room.videoMembers.has(id)) room.videoReserved.delete(id);
+  });
+}
+
+function canTakeVideo(room, userId) {
+  if (room.media !== 'video') return false;
+  pruneVideoReservations(room);
+  if (room.videoMembers.has(userId) || room.videoReserved.has(userId)) return true;
+  return room.videoMembers.size + room.videoReserved.size < MAX_GROUP_VIDEO;
+}
 
 app.get('/health', function (req, res) {
   res.json({ ok: true, app: 'PATS signaling', online: users.size, rooms: rooms.size });
@@ -55,8 +77,10 @@ function roomPeerList(room) {
 
 function leaveRoom(userId, callId) {
   var room = callId && rooms.get(callId);
+  if (room) room.videoReserved.delete(userId);
   if (!room || !room.members.has(userId)) return;
   room.members.delete(userId);
+  room.videoMembers.delete(userId);
   var remaining = roomPeerList(room);
   // 一人離開後房間仍保留；其餘成員可繼續通話
   room.members.forEach(function (peerId) {
@@ -206,7 +230,16 @@ io.on('connection', function (socket) {
     }
     var hostId = socket.data.userId;
     var host = userOf(socket) || {};
-    var room = { hostId: hostId, groupName: groupName, members: new Set([hostId]) };
+    var media = payload && payload.media === 'video' ? 'video' : 'audio';
+    var room = {
+      hostId: hostId,
+      groupName: groupName,
+      media: media,
+      members: new Set([hostId]),
+      videoMembers: new Set(),
+      videoReserved: new Map()
+    };
+    if (media === 'video' && payload.hostVideo) room.videoMembers.add(hostId);
     rooms.set(callId, room);
     socket.data.groupCallId = callId;
 
@@ -225,12 +258,43 @@ io.on('connection', function (socket) {
         from: hostId,
         fromName: host.name || hostId,
         groupName: groupName,
+        media: media,
         memberIds: memberIds.concat([hostId]).filter(function (x, i, a) {
           return a.indexOf(x) === i;
         })
       });
     });
     if (ack) ack({ ok: true, rung: rung, offline: offline });
+  });
+
+  /** 加入前先詢問：語音或視訊、還有沒有視訊名額（有的話保留 15 秒） */
+  socket.on('group-call-probe', function (payload, ack) {
+    if (!ack) return;
+    if (!socket.data.userId) {
+      ack({ ok: false, error: 'not-registered' });
+      return;
+    }
+    var room = rooms.get(String((payload && payload.callId) || '').trim());
+    if (!room) {
+      ack({ ok: false, error: 'no-room' });
+      return;
+    }
+    var userId = socket.data.userId;
+    if (!room.members.has(userId) && room.members.size >= MAX_GROUP_MEMBERS) {
+      ack({ ok: false, error: 'room-full', max: MAX_GROUP_MEMBERS });
+      return;
+    }
+    var videoAllowed = canTakeVideo(room, userId);
+    if (videoAllowed && !room.videoMembers.has(userId)) {
+      room.videoReserved.set(userId, Date.now() + VIDEO_RESERVE_MS);
+    }
+    ack({
+      ok: true,
+      media: room.media,
+      videoAllowed: videoAllowed,
+      videoCount: room.videoMembers.size,
+      maxVideo: MAX_GROUP_VIDEO
+    });
   });
 
   /** 接聽群組通話：加入房間；既有成員會向新人送 offer */
@@ -246,6 +310,14 @@ io.on('connection', function (socket) {
       return;
     }
     var userId = socket.data.userId;
+    if (!room.members.has(userId) && room.members.size >= MAX_GROUP_MEMBERS) {
+      if (ack) ack({ ok: false, error: 'room-full', max: MAX_GROUP_MEMBERS });
+      return;
+    }
+    // 伺服器做最終判斷，避免多人同時搶最後一個視訊名額
+    var videoAllowed = !!(payload && payload.wantVideo) && canTakeVideo(room, userId);
+    room.videoReserved.delete(userId);
+    if (videoAllowed) room.videoMembers.add(userId);
     var me = userOf(socket) || {};
     var existing = [];
     room.members.forEach(function (id) {
@@ -267,7 +339,10 @@ io.on('connection', function (socket) {
       ack({
         ok: true,
         peers: roomPeerList(room).filter(function (p) { return p.id !== userId; }),
-        groupName: room.groupName
+        groupName: room.groupName,
+        media: room.media,
+        videoAllowed: videoAllowed,
+        maxVideo: MAX_GROUP_VIDEO
       });
     }
   });

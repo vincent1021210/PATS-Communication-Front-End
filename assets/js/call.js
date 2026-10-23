@@ -207,7 +207,7 @@ var PatsCall = (function () {
     $('call-hangup').classList.toggle('hidden', mode === 'ringing' || mode === 'idle');
     var inCall = mode === 'active' || mode === 'dialing' || mode === 'connecting';
     $('call-mute').classList.toggle('hidden', !inCall);
-    var canVideo = inCall && !!(session && !session.isGroup && session.media === 'video' && session.sendVideo);
+    var canVideo = inCall && !!(session && session.media === 'video' && session.sendVideo);
     var cam = $('call-camera');
     if (cam) cam.classList.toggle('hidden', !canVideo);
     var flip = $('call-flip');
@@ -253,15 +253,18 @@ var PatsCall = (function () {
     note.classList.toggle('hidden', !text);
   }
 
-  function playRemoteVideo() {
-    var remote = $('call-remote-video');
-    if (!remote || !remote.srcObject) return;
-    remote.play().then(function () {
+  function playMedia(el) {
+    if (!el || !el.srcObject) return;
+    el.play().then(function () {
       $('call-layer').classList.remove('needs-tap');
     }).catch(function () {
       // iOS 等瀏覽器擋自動播放時，請使用者點一下畫面
       $('call-layer').classList.add('needs-tap');
     });
+  }
+
+  function playRemoteVideo() {
+    playMedia($('call-remote-video'));
   }
 
   function attachRemoteVideo(stream, track) {
@@ -285,15 +288,23 @@ var PatsCall = (function () {
     var remote = $('call-remote-video');
     if (remote) remote.classList.remove('is-contain');
     setRemoteNote('');
+    clearGroupVideo();
     $('call-layer').classList.remove('is-video', 'has-remote-video', 'needs-tap', 'is-preview');
   }
 
   /* ---------------------------------------------------------- 鏡頭控制 */
 
   function sendMediaState(extra) {
-    if (!session || session.isGroup || session.media !== 'video' || !session.sendVideo) return;
+    if (!session || session.media !== 'video' || !session.sendVideo) return;
     if (session.phase === 'ringing' || !session.stream) return;
-    emit('media-state', Object.assign({ video: !!session.camOn }, extra || {}));
+    var state = Object.assign({ video: !!session.camOn }, extra || {});
+    if (session.isGroup) {
+      Object.keys(session.links || {}).forEach(function (peerId) {
+        emit('media-state', Object.assign({ to: peerId }, state));
+      });
+      return;
+    }
+    emit('media-state', state);
   }
 
   function toggleCamera() {
@@ -325,7 +336,7 @@ var PatsCall = (function () {
       if (old) stream.removeTrack(old);
       stream.addTrack(track);
       session.facing = facing;
-      if (session.pc) session.pc.replaceVideoTrack(track).catch(function () {});
+      allPcs().forEach(function (pc) { pc.replaceVideoTrack(track).catch(function () {}); });
       var local = $('call-local-video');
       if (local) local.srcObject = null;
       showLocalVideo(stream);
@@ -346,7 +357,11 @@ var PatsCall = (function () {
   }
 
   function onMediaState(payload) {
-    if (!sameCall(payload) || !session || session.isGroup || typeof payload.video !== 'boolean') return;
+    if (!sameCall(payload) || !session || typeof payload.video !== 'boolean') return;
+    if (session.isGroup) {
+      setTileNote(payload.from, payload.video ? '' : (payload.reason === 'background' ? '已暫停視訊' : '已關閉鏡頭'));
+      return;
+    }
     if (payload.video) {
       setRemoteNote('');
       playRemoteVideo();
@@ -358,8 +373,11 @@ var PatsCall = (function () {
   function onStageClick() {
     if ($('call-layer').classList.contains('needs-tap')) {
       playRemoteVideo();
+      var grid = $('call-grid');
+      if (grid) Array.prototype.forEach.call(grid.querySelectorAll('video'), playMedia);
       return;
     }
+    if (session && session.isGroup) return;
     var remote = $('call-remote-video');
     if (remote && remote.srcObject) remote.classList.toggle('is-contain');
   }
@@ -647,6 +665,130 @@ var PatsCall = (function () {
     }
   }
 
+  /* ------------------------------------------------------ 群組視訊格子 */
+
+  function allPcs() {
+    if (!session) return [];
+    if (!session.isGroup) return session.pc ? [session.pc] : [];
+    return Object.keys(session.links || {}).map(function (id) {
+      return session.links[id].pc;
+    }).filter(Boolean);
+  }
+
+  /** 每份畫面 min(300 kbps, 1.2 Mbps ÷ 其他人數)，最低 150 kbps，讓每人總上傳約維持在 1.2 Mbps 內 */
+  function applyGroupBitrate() {
+    if (!session || !session.isGroup || !session.sendVideo) return;
+    var others = Math.max(1, groupParticipantCount() - 1);
+    var bps = Math.max(150000, Math.min(300000, Math.floor(1200000 / others)));
+    allPcs().forEach(function (pc) { pc.capVideoBitrate(bps, 15); });
+  }
+
+  function setGroupVideoMode(on) {
+    setVideoMode(on);
+    $('call-layer').classList.toggle('is-group-video', !!on);
+  }
+
+  function groupTile(peerId) {
+    return document.getElementById('call-tile-' + peerId);
+  }
+
+  function attachGroupVideo(peerId, stream) {
+    var grid = $('call-grid');
+    if (!grid || !session) return;
+    var link = session.links[peerId];
+    var name = (link && link.name) || '成員';
+    var tile = groupTile(peerId);
+    if (!tile) {
+      tile = document.createElement('div');
+      tile.className = 'call-tile';
+      tile.id = 'call-tile-' + peerId;
+      var video = document.createElement('video');
+      video.autoplay = true;
+      video.setAttribute('playsinline', '');
+      ['call-tile-avatar', 'call-tile-name', 'call-tile-note hidden'].forEach(function (cls) {
+        var div = document.createElement('div');
+        div.className = cls;
+        tile.appendChild(div);
+      });
+      tile.insertBefore(video, tile.firstChild);
+      grid.appendChild(tile);
+    }
+    tile.querySelector('.call-tile-avatar').textContent = PATS.initials(name);
+    tile.querySelector('.call-tile-name').textContent = name;
+    var v = tile.querySelector('video');
+    if (v.srcObject !== stream) v.srcObject = stream;
+    // 格子裡的 <video> 會播放聲音，不再另外用隱藏的 <audio>
+    removeRemoteAudio(peerId);
+    playMedia(v);
+    if (session.tileNotes && session.tileNotes[peerId]) setTileNote(peerId, session.tileNotes[peerId]);
+    layoutGroupVideo();
+  }
+
+  function removeGroupTile(peerId) {
+    var tile = groupTile(peerId);
+    if (!tile) return;
+    var v = tile.querySelector('video');
+    if (v) {
+      v.pause();
+      v.srcObject = null;
+    }
+    if (tile.parentNode) tile.parentNode.removeChild(tile);
+    layoutGroupVideo();
+  }
+
+  function setTileNote(peerId, text) {
+    if (!peerId || !session) return;
+    session.tileNotes = session.tileNotes || {};
+    session.tileNotes[peerId] = text || '';
+    var tile = groupTile(peerId);
+    if (!tile) return;
+    tile.classList.toggle('cam-off', !!text);
+    var note = tile.querySelector('.call-tile-note');
+    note.textContent = text || '';
+    note.classList.toggle('hidden', !text);
+  }
+
+  /** 1 位對方全螢幕、2 位分割、3 位 2×2（自己補第 4 格）；語音成員列在下方 */
+  function layoutGroupVideo() {
+    var grid = $('call-grid');
+    if (!grid || !session || !session.isGroup) return;
+    var count = grid.children.length;
+    grid.setAttribute('data-count', String(count));
+    var layer = $('call-layer');
+    layer.classList.toggle('has-remote-video', count > 0);
+    layer.classList.toggle('grid-4', count >= 3);
+    var strip = $('call-audio-strip');
+    if (!strip) return;
+    strip.innerHTML = '';
+    Object.keys(session.links || {}).forEach(function (id) {
+      var link = session.links[id];
+      if (link.phase !== 'active' || groupTile(id)) return;
+      var chip = document.createElement('span');
+      chip.className = 'call-chip';
+      chip.textContent = link.name || '成員';
+      strip.appendChild(chip);
+    });
+    strip.classList.toggle('hidden', !strip.children.length);
+  }
+
+  function clearGroupVideo() {
+    var grid = $('call-grid');
+    if (grid) {
+      Array.prototype.forEach.call(grid.querySelectorAll('video'), function (v) {
+        v.pause();
+        v.srcObject = null;
+      });
+      grid.innerHTML = '';
+      grid.setAttribute('data-count', '0');
+    }
+    var strip = $('call-audio-strip');
+    if (strip) {
+      strip.innerHTML = '';
+      strip.classList.add('hidden');
+    }
+    $('call-layer').classList.remove('is-group-video', 'grid-4');
+  }
+
   function groupLinkCount() {
     if (!session || !session.links) return 0;
     return Object.keys(session.links).length;
@@ -677,11 +819,12 @@ var PatsCall = (function () {
       if (!timerId) startTimer();
       return;
     }
+    var video = session.media === 'video';
     if (session.phase === 'ringing') {
-      setStatus('群組來電…');
+      setStatus(video ? '群組視訊來電…' : '群組來電…');
       return;
     }
-    setStatus(n > 1 ? ('通話中 ' + n + ' 人') : '群組撥號中…');
+    setStatus(n > 1 ? ('通話中 ' + n + ' 人') : (video ? '群組視訊撥號中…' : '群組撥號中…'));
   }
 
   function dropGroupPeer(peerId, toastMsg) {
@@ -691,7 +834,10 @@ var PatsCall = (function () {
       try { link.pc.close(); } catch (e) { /* ignore */ }
     }
     delete session.links[peerId];
+    if (session.tileNotes) delete session.tileNotes[peerId];
     removeRemoteAudio(peerId);
+    removeGroupTile(peerId);
+    layoutGroupVideo();
     updateGroupStatus();
     if (toastMsg) PATS.toast(toastMsg);
     // 不在此結束整通群組通話：其餘成員應可繼續
@@ -883,8 +1029,10 @@ var PatsCall = (function () {
       resolvedIce: null,
       iceSource: null
     };
+    // 鏡頭是否真的開，接聽時再依伺服器名額決定
+    Object.assign(session, mediaFields(payload.media === 'video'));
     paintPeer(session.groupName);
-    setStatus('群組來電…');
+    setStatus(session.media === 'video' ? '群組視訊來電…' : '群組來電…');
     setActions('ringing');
     showLayer();
     if (window.CallTones) CallTones.startRinging();
@@ -909,6 +1057,7 @@ var PatsCall = (function () {
       setGroupRoomCount(payload.remaining.length);
     }
     endGroupIfAlone(payload && payload.remaining);
+    applyGroupBitrate();
   }
 
   function onGroupDeclined(payload) {
@@ -936,8 +1085,16 @@ var PatsCall = (function () {
           emit('ice-candidate', { to: peerId, candidate: candidate });
         },
         onTrack: function (remote) {
-          attachRemoteAudio(peerId, remote);
+          if (session.media === 'video' && remote.getVideoTracks().length) {
+            attachGroupVideo(peerId, remote);
+          } else if (!groupTile(peerId)) {
+            attachRemoteAudio(peerId, remote);
+          }
+          if (link.phase !== 'active' && session.sendVideo && !session.camOn) {
+            emit('media-state', { to: peerId, video: false });
+          }
           link.phase = 'active';
+          layoutGroupVideo();
           setGroupRoomCount(Math.max(groupParticipantCount(), groupLinkCount() + 1));
           if (!session.wasActive) {
             session.wasActive = true;
@@ -970,8 +1127,11 @@ var PatsCall = (function () {
     if (!session || !session.isGroup || !session.stream) return;
     createGroupPc(peerId, name).then(function (link) {
       if (!link || !link.pc || !session) return;
-      return link.pc.createOffer().then(function (offer) {
+      // 自己是語音成員時也要在 offer 留影像欄位，對方的畫面才傳得過來
+      var extra = session.media === 'video' ? { offerToReceiveAudio: true, offerToReceiveVideo: true } : undefined;
+      return link.pc.createOffer(extra).then(function (offer) {
         emit('call-user', { to: peerId, offer: offer, group: true, groupName: session.groupName });
+        applyGroupBitrate();
       });
     }).catch(function () { /* ignore */ });
   }
@@ -983,6 +1143,7 @@ var PatsCall = (function () {
       if (!link || !link.pc || !alive(token)) return null;
       return link.pc.acceptOffer(payload.offer).then(function (answer) {
         emit('accept-call', { to: peerId, answer: answer });
+        applyGroupBitrate();
         updateGroupStatus();
       });
     }).catch(function () { /* ignore */ });
@@ -1033,9 +1194,11 @@ var PatsCall = (function () {
       resolvedIce: null,
       iceSource: null
     };
+    Object.assign(session, mediaFields(!!options.video));
     var token = generation;
     paintPeer(session.groupName);
-    setStatus('群組撥號中…');
+    setStatus(session.media === 'video' ? '群組視訊撥號中…' : '群組撥號中…');
+    setGroupVideoMode(session.media === 'video');
     setActions('dialing');
     showLayer();
     if (window.CallTones) CallTones.startDialing();
@@ -1045,7 +1208,9 @@ var PatsCall = (function () {
       socket.emit('group-call-start', {
         callId: callId,
         groupName: session.groupName,
-        memberIds: list.map(function (p) { return p.id; })
+        memberIds: list.map(function (p) { return p.id; }),
+        media: session.media,
+        hostVideo: !!session.sendVideo
       }, function (ack) {
         if (!alive(token)) return;
         if (!ack || !ack.ok) {
@@ -1116,31 +1281,94 @@ var PatsCall = (function () {
       resolvedIce: null,
       iceSource: null
     };
+    // 邀請卡只有 callId，語音或視訊由 probe 回覆決定
+    Object.assign(session, mediaFields(false));
     var token = generation;
     paintPeer(session.groupName);
     setStatus('正在加入群組通話…');
     setActions('connecting');
     showLayer();
+    enterGroupCall(token, { wantVideo: true, failText: '無法加入（請允許麥克風）' });
+  }
 
-    openMedia(token).then(function () {
-      if (!alive(token)) return;
-      socket.emit('group-call-accept', { callId: callId }, function (ack) {
+  var VIDEO_FULL_TOAST = '視訊人數已達上限（4 人），已改為語音加入';
+
+  function groupJoinError(res) {
+    if (res && res.error === 'no-room') return '此群組通話已結束';
+    if (res && res.error === 'room-full') return '群組通話人數已滿（' + (res.max || 8) + ' 人）';
+    return '無法加入群組通話';
+  }
+
+  /** 舊版伺服器沒有 probe 時當作語音房，不讓流程卡住 */
+  function probeGroupCall(callId) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done) return;
+        done = true;
+        resolve({ ok: true, media: 'audio', videoAllowed: false });
+      }, 8000);
+      socket.emit('group-call-probe', { callId: callId }, function (res) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(res || { ok: false });
+      });
+    });
+  }
+
+  /** 伺服器最後不給視訊名額時，收掉已開的鏡頭改為語音 */
+  function dropOwnVideo() {
+    if (!session) return;
+    session.sendVideo = false;
+    if (session.stream) {
+      session.stream.getVideoTracks().forEach(function (track) {
+        track.stop();
+        session.stream.removeTrack(track);
+      });
+      showLocalVideo(session.stream);
+    }
+    setActions(currentActionMode());
+  }
+
+  /** 加入群組房間：先問視訊名額 → 開麥克風／鏡頭 → group-call-accept（伺服器做最終判斷） */
+  function enterGroupCall(token, opts) {
+    var callId = session.callId;
+    probeGroupCall(callId).then(function (probe) {
+      if (!alive(token)) return null;
+      if (!probe || !probe.ok) {
+        finish(groupJoinError(probe));
+        return null;
+      }
+      var video = probe.media === 'video';
+      session.media = video ? 'video' : 'audio';
+      session.sendVideo = video && !!opts.wantVideo && !!probe.videoAllowed;
+      setGroupVideoMode(video);
+      if (video && opts.wantVideo && !probe.videoAllowed) PATS.toast(VIDEO_FULL_TOAST);
+      return openMedia(token).then(function () {
         if (!alive(token)) return;
-        if (!ack || !ack.ok) {
-          finish(ack && ack.error === 'no-room'
-            ? '此群組通話已結束'
-            : '無法加入群組通話');
-          return;
-        }
-        if (ack.groupName) session.groupName = ack.groupName;
-        setGroupRoomCount(((ack.peers && ack.peers.length) || 0) + 1);
-        paintPeer(session.groupName || '群組通話');
-        updateGroupStatus();
-        // 既有成員會向我們送 offer
+        session.phase = 'connecting';
+        socket.emit('group-call-accept', { callId: callId, wantVideo: !!session.sendVideo }, function (ack) {
+          if (!alive(token)) return;
+          if (!ack || !ack.ok) {
+            finish(groupJoinError(ack));
+            return;
+          }
+          if (session.sendVideo && !ack.videoAllowed) {
+            dropOwnVideo();
+            PATS.toast(VIDEO_FULL_TOAST);
+          }
+          if (ack.groupName) session.groupName = ack.groupName;
+          setGroupRoomCount(((ack.peers && ack.peers.length) || 0) + 1);
+          paintPeer(session.groupName || '群組通話');
+          updateGroupStatus();
+          // 既有成員會向我們送 offer（incoming-call）；此處只需等待
+        });
       });
     }).catch(function (err) {
       if (!alive(token)) return;
-      finish(err && err.message ? err.message : '無法加入（請允許麥克風）');
+      if (opts.rejectOnFail) socket.emit('group-call-reject', { callId: callId });
+      finish(err && err.message ? err.message : opts.failText);
     });
   }
 
@@ -1157,25 +1385,11 @@ var PatsCall = (function () {
     setActions('connecting');
 
     if (session.isGroup) {
-      openMedia(token).then(function () {
-        if (!alive(token)) return;
-        session.phase = 'connecting';
-        socket.emit('group-call-accept', { callId: session.callId }, function (ack) {
-          if (!alive(token)) return;
-          if (!ack || !ack.ok) {
-            finish('無法加入群組通話');
-            return;
-          }
-          if (ack.groupName) session.groupName = ack.groupName;
-          setGroupRoomCount(((ack.peers && ack.peers.length) || 0) + 1);
-          paintPeer(session.groupName || '群組通話');
-          updateGroupStatus();
-          // 既有成員會向我們送 offer（incoming-call）；此處只需等待
-        });
-      }).catch(function (err) {
-        if (!alive(token)) return;
-        socket.emit('group-call-reject', { callId: session.callId });
-        finish(err && err.message ? err.message : '無法接聽（請允許麥克風）');
+      session.phase = 'connecting';
+      enterGroupCall(token, {
+        wantVideo: !(options && options.audioOnly),
+        rejectOnFail: true,
+        failText: '無法接聽（請允許麥克風）'
       });
       return;
     }
@@ -1360,8 +1574,9 @@ var PatsCall = (function () {
   }
 
   function openMedia(token) {
-    var wantVideo = !!(session && !session.isGroup && session.sendVideo);
-    return AudioStreamManager.getStream({ video: wantVideo }).then(function (stream) {
+    var wantVideo = !!(session && session.sendVideo);
+    var group = !!(session && session.isGroup);
+    return AudioStreamManager.getStream({ video: wantVideo, group: group }).then(function (stream) {
       if (!alive(token)) {
         AudioStreamManager.stop(stream);
         return;
@@ -1370,8 +1585,8 @@ var PatsCall = (function () {
       if (wantVideo && stream.videoFallback) {
         session.sendVideo = false;
         PATS.toast(stream.videoFallback);
-        // 撥號端沒有畫面時整通改為語音；接聽端仍可看對方畫面
-        if (session.isCaller) {
+        // 一對一撥號端沒有畫面時整通改為語音；接聽端與群組成員仍可看別人畫面
+        if (session.isCaller && !session.isGroup) {
           session.media = 'audio';
           setVideoMode(false);
           setStatus('撥號中…');
@@ -1422,6 +1637,17 @@ var PatsCall = (function () {
         setMuteIcon();
       });
     });
+  }
+
+  function mediaFields(video) {
+    return {
+      media: video ? 'video' : 'audio',
+      sendVideo: !!video,
+      camOn: true,
+      facing: 'user',
+      canFlip: false,
+      flipping: false
+    };
   }
 
   function begin(peer, isCaller, media) {

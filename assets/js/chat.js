@@ -158,7 +158,7 @@ var PatsChat = (function () {
       return;
     }
     if (conv && conv.type === 'group') {
-      startGroupCall(conv);
+      startGroupCall(conv, options);
       return;
     }
     var peer = peerOf(conv);
@@ -169,7 +169,8 @@ var PatsChat = (function () {
     PatsCall.dial(peer, options);
   }
 
-  function startGroupCall(conv) {
+  function startGroupCall(conv, options) {
+    var video = !!(options && options.video);
     function dialWith(full) {
       var me = state.user && state.user.id;
       var members = ((full && full.members) || []).filter(function (m) {
@@ -188,6 +189,7 @@ var PatsChat = (function () {
       var title = (full && full.title) || '群組通話';
       var conversationId = full && full.id;
       PatsCall.dialGroup(members, title, {
+        video: video,
         onStarted: function (callId, groupName) {
           postGroupCallInvite(conversationId, callId, groupName || title);
         }
@@ -230,10 +232,10 @@ var PatsChat = (function () {
         el('div', { class: 'sub', text: subtitle })
       ]),
       el('div', { class: 'actions' }, [
-        conv.type === 'group' ? null : el('button', {
+        el('button', {
           class: 'icon-btn call-btn', type: 'button',
-          title: '視訊通話',
-          'aria-label': '視訊通話',
+          title: conv.type === 'group' ? '群組視訊' : '視訊通話',
+          'aria-label': conv.type === 'group' ? '群組視訊' : '視訊通話',
           onclick: function () { startCall(conv, { video: true }); }
         }, [icon('videocam')]),
         el('button', {
@@ -913,13 +915,11 @@ var PatsChat = (function () {
       icon: 'call',
       onSelect: function () { startCall(conv); }
     });
-    if (conv.type !== 'group') {
-      items.push({
-        label: '視訊通話',
-        icon: 'videocam',
-        onSelect: function () { startCall(conv, { video: true }); }
-      });
-    }
+    items.push({
+      label: conv.type === 'group' ? '群組視訊' : '視訊通話',
+      icon: 'videocam',
+      onSelect: function () { startCall(conv, { video: true }); }
+    });
     items.push(
       {
         label: archived ? '移回主要訊息' : '封存這個對話',
