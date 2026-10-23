@@ -113,6 +113,17 @@ var PATS = (function () {
    * 只要帶了 application/json 就會觸發預檢而整個失敗。用 text/plain 送 JSON
    * 字串屬於「簡單請求」，瀏覽器會直接送出，後端再自行解析 body。
    */
+  /** 手機瀏覽器常留舊版 index.html／config.js；遇到舊後端時帶新網址重載一次 */
+  function reloadStaleOnce_() {
+    try {
+      if (sessionStorage.getItem('pats-stale-reload')) return;
+      sessionStorage.setItem('pats-stale-reload', '1');
+    } catch (e) { return; }
+    var url = new URL(window.location.href);
+    url.searchParams.set('r', String(Date.now()));
+    setTimeout(function () { window.location.replace(url.toString()); }, 800);
+  }
+
   function rpc(action, payload) {
     var url = state.config.apiUrl;
     if (!url) return Promise.reject(fail('NO_API_URL'));
@@ -140,6 +151,7 @@ var PATS = (function () {
           throw fail('BAD_RESPONSE');
         }
         if (result && result.ok) return result.data;
+        if (result && result.error === 'UNKNOWN_ACTION') reloadStaleOnce_();
         throw fail((result && result.error) || 'UNKNOWN_ERROR');
       })
       .catch(function (err) {
