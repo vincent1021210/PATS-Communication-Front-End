@@ -12,9 +12,9 @@ var PatsSettings = (function () {
 
   var ARCHIVE_OPTIONS = [
     { value: 30, label: '30 天' },
-    { value: 90, label: '90 天 (預設)' },
+    { value: 90, label: '90 天' },
     { value: 365, label: '1 年' },
-    { value: 0, label: '永不封存', desc: '手動管理所有對話' }
+    { value: 0, label: '永不封存 (預設)', desc: '永久保留在主要列表，改為手動管理' }
   ];
 
   var draft = null;
@@ -84,7 +84,9 @@ var PatsSettings = (function () {
   /* ------------------------------------------------------- 封存時間設定 */
 
   function renderArchive() {
-    draft = { archiveDays: Number(state.user.settings.archiveDays) };
+    var days = Number(state.user.settings && state.user.settings.archiveDays);
+    if (!isFinite(days) || days < 0) days = 0;
+    draft = { archiveDays: days };
 
     var options = ARCHIVE_OPTIONS.map(function (option) {
       var input = el('input', {

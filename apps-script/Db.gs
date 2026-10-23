@@ -37,7 +37,7 @@ var SCHEMA = {
 
 /** 預設的使用者設定，寫在 users.settings（JSON 字串）。 */
 var DEFAULT_USER_SETTINGS = {
-  archiveDays: 90,
+  archiveDays: 0,
   notifications: true
 };
 
