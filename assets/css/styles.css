@@ -879,6 +879,12 @@ select.email-domain {
 }
 .call-card h2 { margin: 0 0 6px; font-size: 22px; color: #fff; }
 .call-card p { margin: 0; color: rgba(255,255,255,.82); font-size: 14px; }
+.call-remotes {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
 .call-actions { display: flex; justify-content: center; gap: 18px; margin-top: 30px; }
 .call-round {
   display: grid; place-items: center;

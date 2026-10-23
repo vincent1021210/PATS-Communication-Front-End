@@ -4,18 +4,7 @@
  * 只負責「誰要打給誰」以及轉發 WebRTC 的 SDP / ICE。
  * 聲音走瀏覽器之間的 WebRTC，不會經過這支程式。
  *
- * 啟動：
- *   cd voip
- *   npm install
- *   npm start
- *
- * 環境變數：
- *   PORT         預設 3001（Render 會自動注入）
- *   CORS_ORIGIN  預設允許所有來源。正式環境請設成你的網站網址，
- *                例如 https://your-name.github.io
- *
- * Render 部署：見同目錄 Render部署說明.txt、倉庫根目錄 render.yaml。
- * Keep-alive：對外定時 GET /health（與是否安裝 PWA 無關）。
+ * 支援：一對一通話、群組 Mesh 通話（成員互相建立連線）。
  */
 
 'use strict';
@@ -34,15 +23,50 @@ var io = socketIo(server, {
   }
 });
 
-/** userId -> { socketId, name }。同一個人新連線會取代舊的。 */
+/** userId -> { socketId, name } */
 var users = new Map();
 
+/** callId -> { hostId, groupName, members: Set<userId> } */
+var rooms = new Map();
+
 app.get('/health', function (req, res) {
-  res.json({ ok: true, app: 'PATS signaling', online: users.size });
+  res.json({ ok: true, app: 'PATS signaling', online: users.size, rooms: rooms.size });
 });
 
 function userOf(socket) {
   return users.get(socket.data.userId);
+}
+
+function emitToUser(userId, event, payload) {
+  var target = users.get(userId);
+  if (!target) return false;
+  io.to(target.socketId).emit(event, payload);
+  return true;
+}
+
+function roomPeerList(room) {
+  var list = [];
+  room.members.forEach(function (id) {
+    var u = users.get(id);
+    list.push({ id: id, name: (u && u.name) || id });
+  });
+  return list;
+}
+
+function leaveRoom(userId, callId) {
+  var room = callId && rooms.get(callId);
+  if (!room || !room.members.has(userId)) return;
+  room.members.delete(userId);
+  room.members.forEach(function (peerId) {
+    emitToUser(peerId, 'group-peer-left', { callId: callId, from: userId });
+  });
+  if (room.members.size === 0) rooms.delete(callId);
+}
+
+function leaveAllRooms(userId) {
+  rooms.forEach(function (room, callId) {
+    if (room.members.has(userId)) leaveRoom(userId, callId);
+  });
 }
 
 function relay(socket, event, payload, ack) {
@@ -65,7 +89,9 @@ function relay(socket, event, payload, ack) {
     callId: payload.callId,
     offer: payload.offer,
     answer: payload.answer,
-    candidate: payload.candidate
+    candidate: payload.candidate,
+    group: !!(payload && payload.group),
+    groupName: (payload && payload.groupName) || ''
   });
   if (ack) ack({ ok: true });
 }
@@ -120,14 +146,21 @@ io.on('connection', function (socket) {
   socket.on('call-bind', function (payload) {
     if (!socket.data.userId) return;
     socket.data.inCallWith = String((payload && payload.peerId) || '').trim() || null;
+    socket.data.groupCallId = String((payload && payload.callId) || '').trim() || socket.data.groupCallId || null;
   });
 
   socket.on('call-unbind', function () {
     socket.data.inCallWith = null;
+    socket.data.groupCallId = null;
   });
 
   socket.on('hang-up', function (payload, ack) {
+    var callId = payload && payload.callId;
+    if (callId && rooms.has(callId)) {
+      leaveRoom(socket.data.userId, callId);
+    }
     socket.data.inCallWith = null;
+    socket.data.groupCallId = null;
     relay(socket, 'hung-up', payload || {}, ack);
   });
 
@@ -143,22 +176,133 @@ io.on('connection', function (socket) {
     relay(socket, 'request-restart', payload || {}, ack);
   });
 
+  /** 發起群組通話：建立房間並向其他成員響鈴（尚無 SDP） */
+  socket.on('group-call-start', function (payload, ack) {
+    if (!socket.data.userId) {
+      if (ack) ack({ ok: false, error: 'not-registered' });
+      return;
+    }
+    var callId = String((payload && payload.callId) || '').trim();
+    var groupName = String((payload && payload.groupName) || '群組通話').trim();
+    var memberIds = (payload && payload.memberIds) || [];
+    if (!callId) {
+      if (ack) ack({ ok: false, error: 'missing-call' });
+      return;
+    }
+    var hostId = socket.data.userId;
+    var host = userOf(socket) || {};
+    var room = { hostId: hostId, groupName: groupName, members: new Set([hostId]) };
+    rooms.set(callId, room);
+    socket.data.groupCallId = callId;
+
+    var offline = [];
+    var rung = [];
+    memberIds.forEach(function (raw) {
+      var id = String(raw || '').trim();
+      if (!id || id === hostId) return;
+      if (!users.get(id)) {
+        offline.push(id);
+        return;
+      }
+      rung.push(id);
+      emitToUser(id, 'incoming-group-call', {
+        callId: callId,
+        from: hostId,
+        fromName: host.name || hostId,
+        groupName: groupName,
+        memberIds: memberIds.concat([hostId]).filter(function (x, i, a) {
+          return a.indexOf(x) === i;
+        })
+      });
+    });
+    if (ack) ack({ ok: true, rung: rung, offline: offline });
+  });
+
+  /** 接聽群組通話：加入房間；既有成員會向新人送 offer */
+  socket.on('group-call-accept', function (payload, ack) {
+    if (!socket.data.userId) {
+      if (ack) ack({ ok: false, error: 'not-registered' });
+      return;
+    }
+    var callId = String((payload && payload.callId) || '').trim();
+    var room = rooms.get(callId);
+    if (!room) {
+      if (ack) ack({ ok: false, error: 'no-room' });
+      return;
+    }
+    var userId = socket.data.userId;
+    var me = userOf(socket) || {};
+    var existing = [];
+    room.members.forEach(function (id) {
+      if (id !== userId) existing.push(id);
+    });
+    room.members.add(userId);
+    socket.data.groupCallId = callId;
+
+    existing.forEach(function (peerId) {
+      emitToUser(peerId, 'group-peer-joined', {
+        callId: callId,
+        userId: userId,
+        name: me.name || userId,
+        groupName: room.groupName
+      });
+    });
+
+    if (ack) {
+      ack({
+        ok: true,
+        peers: roomPeerList(room).filter(function (p) { return p.id !== userId; }),
+        groupName: room.groupName
+      });
+    }
+  });
+
+  socket.on('group-call-leave', function (payload, ack) {
+    var callId = String((payload && payload.callId) || socket.data.groupCallId || '').trim();
+    leaveRoom(socket.data.userId, callId);
+    socket.data.groupCallId = null;
+    socket.data.inCallWith = null;
+    if (ack) ack({ ok: true });
+  });
+
+  socket.on('group-call-reject', function (payload, ack) {
+    var callId = String((payload && payload.callId) || '').trim();
+    var room = rooms.get(callId);
+    if (room) {
+      var from = socket.data.userId;
+      room.members.forEach(function (peerId) {
+        if (peerId !== from) {
+          emitToUser(peerId, 'group-call-declined', {
+            callId: callId,
+            from: from,
+            fromName: (userOf(socket) || {}).name || from
+          });
+        }
+      });
+    }
+    if (ack) ack({ ok: true });
+  });
+
   socket.on('disconnect', function () {
     var userId = socket.data.userId;
     var peerId = socket.data.inCallWith;
+    var groupCallId = socket.data.groupCallId;
     var current = userId && users.get(userId);
     if (current && current.socketId === socket.id) users.delete(userId);
-    // 通話中一方信令斷線 → 通知對方回到聊天並提示
-    if (userId && peerId) {
-      var peer = users.get(peerId);
-      if (peer && peer.socketId) {
-        io.to(peer.socketId).emit('peer-network-lost', {
-          from: userId,
-          reason: 'signaling-disconnect'
-        });
-      }
+
+    if (groupCallId) {
+      leaveRoom(userId, groupCallId);
+    } else if (userId && peerId) {
+      emitToUser(peerId, 'peer-network-lost', {
+        from: userId,
+        reason: 'signaling-disconnect'
+      });
+    } else if (userId) {
+      leaveAllRooms(userId);
     }
+
     socket.data.inCallWith = null;
+    socket.data.groupCallId = null;
   });
 });
 

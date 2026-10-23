@@ -289,7 +289,12 @@ var PatsCall = (function () {
       var seconds = Math.floor((Date.now() - started) / 1000);
       var min = Math.floor(seconds / 60);
       var sec = seconds % 60;
-      setStatus((min < 10 ? '0' : '') + min + ':' + (sec < 10 ? '0' : '') + sec);
+      var clock = (min < 10 ? '0' : '') + min + ':' + (sec < 10 ? '0' : '') + sec;
+      if (session && session.isGroup) {
+        setStatus(groupLinkCount() + ' 人 · ' + clock);
+      } else {
+        setStatus(clock);
+      }
     }, 1000);
   }
 
@@ -442,19 +447,51 @@ var PatsCall = (function () {
     });
 
     socket.on('incoming-call', onIncoming);
+    socket.on('incoming-group-call', onIncomingGroup);
+    socket.on('group-peer-joined', onGroupPeerJoined);
+    socket.on('group-peer-left', onGroupPeerLeft);
+    socket.on('group-call-declined', onGroupDeclined);
     socket.on('call-accepted', onAccepted);
-    socket.on('call-rejected', function () { finish('對方已拒絕'); });
-    socket.on('hung-up', function () { finish('通話已結束'); });
+    socket.on('call-rejected', function (payload) {
+      if (session && session.isGroup) {
+        if (payload && payload.from) dropGroupPeer(payload.from, null);
+        return;
+      }
+      finish('對方已拒絕');
+    });
+    socket.on('hung-up', function (payload) {
+      if (session && session.isGroup && payload && payload.from) {
+        dropGroupPeer(payload.from, null);
+        return;
+      }
+      finish('通話已結束');
+    });
     socket.on('peer-network-lost', function (payload) {
       if (!session) return;
+      if (session.isGroup && payload && payload.from) {
+        dropGroupPeer(payload.from, null);
+        updateGroupStatus();
+        return;
+      }
       if (payload && payload.from && session.peerId && payload.from !== session.peerId) return;
       finish('對方網路已斷線');
     });
     socket.on('call-failed', function (payload) {
+      if (session && session.isGroup) return;
       if (payload && payload.reason === 'offline') finish('對方不在線上');
     });
     socket.on('ice-candidate', function (payload) {
       if (!sameCall(payload) || !session || !payload.candidate) return;
+      if (session.isGroup) {
+        var link = payload.from && session.links[payload.from];
+        if (!link) return;
+        if (!link.pc) {
+          link.earlyIce.push(payload.candidate);
+          return;
+        }
+        link.pc.addIceCandidate(payload.candidate);
+        return;
+      }
       if (!session.pc) {
         session.earlyIce.push(payload.candidate);
         return;
@@ -463,11 +500,18 @@ var PatsCall = (function () {
     });
     socket.on('renegotiate', onRenegotiate);
     socket.on('renegotiate-answer', function (payload) {
-      if (!sameCall(payload) || !session || !session.pc) return;
+      if (!sameCall(payload) || !session) return;
+      if (session.isGroup) {
+        var gLink = payload.from && session.links[payload.from];
+        if (!gLink || !gLink.pc) return;
+        gLink.pc.acceptAnswer(payload.answer).catch(function () {});
+        return;
+      }
+      if (!session.pc) return;
       session.pc.acceptAnswer(payload.answer).catch(function () { finish('重新連線失敗'); });
     });
     socket.on('request-restart', function (payload) {
-      if (!sameCall(payload) || !session || !session.isCaller) return;
+      if (!sameCall(payload) || !session || !session.isCaller || session.isGroup) return;
       restart();
     });
     socket.on('replaced', function () {
@@ -493,7 +537,86 @@ var PatsCall = (function () {
 
   function emit(event, extra) {
     if (!socket || !socket.connected || !session) return;
-    socket.emit(event, Object.assign({ to: session.peerId, callId: session.callId }, extra || {}));
+    var to = (extra && extra.to) || session.peerId;
+    socket.emit(event, Object.assign({
+      to: to,
+      callId: session.callId,
+      group: !!session.isGroup,
+      groupName: session.groupName || ''
+    }, extra || {}));
+  }
+
+  function clearRemoteAudios() {
+    var box = $('call-remotes');
+    if (box) box.innerHTML = '';
+    var single = $('call-remote');
+    if (single) {
+      single.pause();
+      single.srcObject = null;
+    }
+  }
+
+  function attachRemoteAudio(peerId, stream) {
+    var box = $('call-remotes');
+    if (!box) {
+      var single = $('call-remote');
+      if (single) {
+        single.srcObject = stream;
+        single.play().catch(function () {});
+      }
+      return;
+    }
+    var id = 'call-remote-' + peerId;
+    var audio = document.getElementById(id);
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.id = id;
+      audio.autoplay = true;
+      audio.setAttribute('playsinline', '');
+      box.appendChild(audio);
+    }
+    audio.srcObject = stream;
+    audio.play().catch(function () {});
+  }
+
+  function removeRemoteAudio(peerId) {
+    var audio = document.getElementById('call-remote-' + peerId);
+    if (audio) {
+      audio.pause();
+      audio.srcObject = null;
+      if (audio.parentNode) audio.parentNode.removeChild(audio);
+    }
+  }
+
+  function groupLinkCount() {
+    if (!session || !session.links) return 0;
+    return Object.keys(session.links).length;
+  }
+
+  function updateGroupStatus() {
+    if (!session || !session.isGroup) return;
+    paintPeer(session.groupName || '群組通話');
+    var n = groupLinkCount();
+    if (session.phase === 'active' || session.wasActive) {
+      if (!timerId) startTimer();
+      return;
+    }
+    setStatus(n ? ('已接通 ' + n + ' 人') : (session.phase === 'ringing' ? '群組來電…' : '群組撥號中…'));
+  }
+
+  function dropGroupPeer(peerId, toastMsg) {
+    if (!session || !session.isGroup || !peerId) return;
+    var link = session.links[peerId];
+    if (link && link.pc) {
+      try { link.pc.close(); } catch (e) { /* ignore */ }
+    }
+    delete session.links[peerId];
+    removeRemoteAudio(peerId);
+    updateGroupStatus();
+    if (toastMsg) PATS.toast(toastMsg);
+    if (groupLinkCount() === 0 && (session.wasActive || session.phase === 'active')) {
+      finish('群組通話已結束');
+    }
   }
 
   function dialHint() {
@@ -649,6 +772,13 @@ var PatsCall = (function () {
 
   function onIncoming(payload) {
     if (!payload || !payload.offer) return;
+
+    // 群組 Mesh：已在群組通話中，收到既有成員的 offer → 直接應答
+    if (session && session.isGroup && sameCall(payload) && payload.from) {
+      answerGroupOffer(payload);
+      return;
+    }
+
     if (session) {
       socket.emit('reject-call', { to: payload.from, callId: payload.callId, reason: 'busy' });
       return;
@@ -676,14 +806,234 @@ var PatsCall = (function () {
     } catch (e) { /* ignore */ }
   }
 
+  function onIncomingGroup(payload) {
+    if (!payload || !payload.callId) return;
+    if (session) {
+      socket.emit('group-call-reject', { callId: payload.callId });
+      return;
+    }
+    generation += 1;
+    session = {
+      token: generation,
+      callId: payload.callId,
+      peerId: payload.from,
+      isCaller: false,
+      isGroup: true,
+      groupName: payload.groupName || '群組通話',
+      phase: 'ringing',
+      pc: null,
+      stream: null,
+      offer: null,
+      links: {},
+      retried: false,
+      restartTimer: null,
+      networkLostTimer: null,
+      wasActive: false,
+      earlyIce: [],
+      resolvedIce: null,
+      iceSource: null
+    };
+    paintPeer(session.groupName);
+    setStatus('群組來電…');
+    setActions('ringing');
+    showLayer();
+    if (window.CallTones) CallTones.startRinging();
+    try {
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+    } catch (e) { /* ignore */ }
+  }
+
+  function onGroupPeerJoined(payload) {
+    if (!session || !session.isGroup || !sameCall(payload)) return;
+    if (!payload.userId || payload.userId === (currentUser && currentUser.id)) return;
+    // 既有成員向新人送 offer
+    offerToGroupPeer(payload.userId, payload.name);
+  }
+
+  function onGroupPeerLeft(payload) {
+    if (!session || !session.isGroup || !sameCall(payload)) return;
+    if (payload && payload.from) dropGroupPeer(payload.from, null);
+  }
+
+  function onGroupDeclined(payload) {
+    if (!session || !session.isGroup || !sameCall(payload)) return;
+    var name = (payload && payload.fromName) || '成員';
+    PATS.toast(name + ' 已拒絕群組通話');
+  }
+
+  function createGroupPc(peerId, name) {
+    var link = session.links[peerId] || {
+      pc: null,
+      name: name || peerId,
+      earlyIce: [],
+      phase: 'connecting'
+    };
+    link.name = name || link.name || peerId;
+    session.links[peerId] = link;
+    if (link.pc) return Promise.resolve(link);
+
+    return resolveIceServers().then(function (servers) {
+      if (!session || !session.isGroup) return null;
+      link.pc = WebRTCManager.create({
+        iceServers: servers,
+        onIceCandidate: function (candidate) {
+          emit('ice-candidate', { to: peerId, candidate: candidate });
+        },
+        onTrack: function (remote) {
+          attachRemoteAudio(peerId, remote);
+          link.phase = 'active';
+          if (!session.wasActive) {
+            session.wasActive = true;
+            session.phase = 'active';
+            setActions('active');
+            if (window.CallTones) CallTones.playConnected();
+          }
+          updateGroupStatus();
+        },
+        onConnectionState: function (state) {
+          if (!session || !session.links[peerId]) return;
+          if (state === 'failed' || state === 'closed' || state === 'disconnected') {
+            if (state === 'failed' || state === 'closed') dropGroupPeer(peerId, null);
+          }
+        }
+      });
+      if (session.stream) link.pc.addStream(session.stream);
+      link.earlyIce.splice(0).forEach(function (c) { link.pc.addIceCandidate(c); });
+      return link;
+    });
+  }
+
+  function offerToGroupPeer(peerId, name) {
+    if (!session || !session.isGroup || !session.stream) return;
+    createGroupPc(peerId, name).then(function (link) {
+      if (!link || !link.pc || !session) return;
+      return link.pc.createOffer().then(function (offer) {
+        emit('call-user', { to: peerId, offer: offer, group: true, groupName: session.groupName });
+      });
+    }).catch(function () { /* ignore */ });
+  }
+
+  function answerGroupOffer(payload) {
+    var peerId = payload.from;
+    var token = session.token;
+    createGroupPc(peerId, payload.fromName).then(function (link) {
+      if (!link || !link.pc || !alive(token)) return null;
+      return link.pc.acceptOffer(payload.offer).then(function (answer) {
+        emit('accept-call', { to: peerId, answer: answer });
+        updateGroupStatus();
+      });
+    }).catch(function () { /* ignore */ });
+  }
+
+  function dialGroup(peers, groupName) {
+    if (!window.isSecureContext) {
+      PATS.toast(dialHint(), 'error');
+      return;
+    }
+    var hint = dialHint();
+    if (hint) {
+      PATS.toast(hint, 'error');
+      return;
+    }
+    if (session) {
+      PATS.toast('已經有一通通話進行中。', 'error');
+      return;
+    }
+    var list = (peers || []).filter(function (p) {
+      return p && p.id && (!currentUser || p.id !== currentUser.id);
+    });
+    if (!list.length) {
+      PATS.toast('群組沒有其他可通話成員。', 'error');
+      return;
+    }
+
+    var callId = newId();
+    generation += 1;
+    session = {
+      token: generation,
+      callId: callId,
+      peerId: list[0].id,
+      isCaller: true,
+      isGroup: true,
+      groupName: groupName || '群組通話',
+      phase: 'dialing',
+      pc: null,
+      stream: null,
+      offer: null,
+      links: {},
+      retried: false,
+      restartTimer: null,
+      networkLostTimer: null,
+      wasActive: false,
+      earlyIce: [],
+      resolvedIce: null,
+      iceSource: null
+    };
+    var token = generation;
+    paintPeer(session.groupName);
+    setStatus('群組撥號中…');
+    setActions('dialing');
+    showLayer();
+    if (window.CallTones) CallTones.startDialing();
+
+    openMedia(token).then(function () {
+      if (!alive(token)) return;
+      socket.emit('group-call-start', {
+        callId: callId,
+        groupName: session.groupName,
+        memberIds: list.map(function (p) { return p.id; })
+      }, function (ack) {
+        if (!alive(token)) return;
+        if (!ack || !ack.ok) {
+          finish('無法發起群組通話');
+          return;
+        }
+        if (!ack.rung || !ack.rung.length) {
+          finish('沒有成員在線上，無法群組通話');
+          return;
+        }
+        if (ack.offline && ack.offline.length) {
+          PATS.toast('部分成員未在線，已向在線成員撥打。');
+        }
+        updateGroupStatus();
+      });
+    }).catch(function (err) {
+      if (!alive(token)) return;
+      finish(err && err.message ? err.message : '無法開始通話（請允許麥克風）');
+    });
+  }
+
   function accept() {
     if (!session || session.phase !== 'ringing') return;
     var token = generation;
-    var offer = session.offer;
     if (window.CallTones) CallTones.stop();
     setStatus('接通中…');
     setActions('connecting');
 
+    if (session.isGroup) {
+      openMedia(token).then(function () {
+        if (!alive(token)) return;
+        session.phase = 'connecting';
+        socket.emit('group-call-accept', { callId: session.callId }, function (ack) {
+          if (!alive(token)) return;
+          if (!ack || !ack.ok) {
+            finish('無法加入群組通話');
+            return;
+          }
+          if (ack.groupName) session.groupName = ack.groupName;
+          paintPeer(session.groupName || '群組通話');
+          updateGroupStatus();
+          // 既有成員會向我們送 offer（incoming-call）；此處只需等待
+        });
+      }).catch(function (err) {
+        if (!alive(token)) return;
+        socket.emit('group-call-reject', { callId: session.callId });
+        finish(err && err.message ? err.message : '無法接聽（請允許麥克風）');
+      });
+      return;
+    }
+
+    var offer = session.offer;
     openMedia(token).then(function () {
       if (!alive(token)) return null;
       return session.pc.acceptOffer(offer);
@@ -700,12 +1050,27 @@ var PatsCall = (function () {
 
   function reject() {
     if (!session) return;
+    if (session.isGroup) {
+      socket.emit('group-call-reject', { callId: session.callId });
+      finish('已拒絕');
+      return;
+    }
     emit('reject-call', {});
     finish('已拒絕');
   }
 
   function hangup() {
     if (!session) return;
+    if (session.isGroup) {
+      Object.keys(session.links || {}).forEach(function (peerId) {
+        emit('hang-up', { to: peerId });
+      });
+      if (socket && socket.connected) {
+        socket.emit('group-call-leave', { callId: session.callId });
+      }
+      finish('通話已結束');
+      return;
+    }
     emit('hang-up', {});
     finish('通話已結束');
   }
@@ -724,10 +1089,21 @@ var PatsCall = (function () {
       hasSession: !!session,
       hasPc: !!(session && session.pc),
       phase: session && session.phase,
-      callId: payload && payload.callId
+      callId: payload && payload.callId,
+      isGroup: !!(session && session.isGroup)
     });
     // #endregion
-    if (!sameCall(payload) || !session || !session.pc) return;
+    if (!sameCall(payload) || !session) return;
+    if (session.isGroup) {
+      var link = payload.from && session.links[payload.from];
+      if (!link || !link.pc || !payload.answer) return;
+      if (window.CallTones) CallTones.stop();
+      link.pc.acceptAnswer(payload.answer).then(function () {
+        updateGroupStatus();
+      }).catch(function () {});
+      return;
+    }
+    if (!session.pc) return;
     if (window.CallTones) CallTones.stop();
     session.phase = 'connecting';
     setStatus('接通中…');
@@ -871,6 +1247,7 @@ var PatsCall = (function () {
         // #region agent log
         dbgCall_('A', 'call.js:openMedia', 'openMedia ice config', {
           isCaller: !!(session && session.isCaller),
+          isGroup: !!(session && session.isGroup),
           iceUrls: (servers || []).map(function (s) {
             return typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
           }),
@@ -880,6 +1257,12 @@ var PatsCall = (function () {
           pageProto: location.protocol
         }, 'post-fix');
         // #endregion
+        // 群組通話：只準備麥克風與 ICE，PeerConnection 按成員分別建立
+        if (session.isGroup) {
+          muted = false;
+          setMuteIcon();
+          return;
+        }
         session.pc = WebRTCManager.create({
           iceServers: servers,
           onIceCandidate: function (candidate) {
@@ -950,22 +1333,30 @@ var PatsCall = (function () {
     });
     // #endregion
     var hadSession = !!session;
+    var wasGroup = !!(session && session.isGroup);
+    var groupCallId = session && session.callId;
     generation += 1;
     stopTimer();
     unbindCallPresence();
     if (session) {
+      if (wasGroup && socket && socket.connected && groupCallId) {
+        try { socket.emit('group-call-leave', { callId: groupCallId }); } catch (e) { /* ignore */ }
+      }
       if (session.restartTimer) clearTimeout(session.restartTimer);
       clearNetworkLostWatch();
+      if (session.links) {
+        Object.keys(session.links).forEach(function (id) {
+          try {
+            if (session.links[id].pc) session.links[id].pc.close();
+          } catch (e2) { /* ignore */ }
+        });
+      }
       if (session.pc) session.pc.close();
       AudioStreamManager.stop(session.stream);
     }
     session = null;
     muted = false;
-    var audio = $('call-remote');
-    if (audio) {
-      audio.pause();
-      audio.srcObject = null;
-    }
+    clearRemoteAudios();
     hideLayer();
     if (hadSession && window.CallTones) CallTones.playEnded();
     if (message) {
@@ -995,6 +1386,7 @@ var PatsCall = (function () {
     connect: connect,
     disconnect: disconnect,
     dial: dial,
+    dialGroup: dialGroup,
     signalingUrl: signalingUrl,
     setSignalingUrl: setSignalingUrl,
     signalState: function () { return signalState; },

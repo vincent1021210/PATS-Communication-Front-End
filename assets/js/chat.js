@@ -32,18 +32,18 @@ var PatsChat = (function () {
       emptyAction: { label: '邀請朋友', handler: promptInviteContact },
       placeholderIcon: 'chat_bubble',
       placeholderTitle: '請選擇一個對話',
-      placeholderText: '從左側列表選擇現有的聯絡人或群聊，開始傳送訊息。'
+      placeholderText: '從左側列表選擇現有的聯絡人或群組，開始傳送訊息。'
     },
     group: {
-      title: '群聊',
-      search: '搜尋群聊…',
+      title: '多人討論',
+      search: '搜尋群組或聯絡人',
       emptyIcon: 'groups',
-      emptyTitle: '你還沒有群聊',
-      emptyText: '建立一個群聊，把成員拉進來一起討論。',
-      emptyAction: { label: '建立群聊', handler: promptCreateGroup },
+      emptyTitle: '你還沒有群組，請建立',
+      emptyText: '建立一個群組，把團隊成員拉進來一起討論。',
+      emptyAction: { label: '建立新群組', handler: promptCreateGroup },
       placeholderIcon: 'forum',
-      placeholderTitle: '開始群聊',
-      placeholderText: '選擇左側的群聊，或建立一個新的群聊與大家一起討論。'
+      placeholderTitle: '開始多人討論',
+      placeholderText: '選擇左側的群組，或建立一個新的群組來與團隊進行協作與溝通。'
     },
     archive: {
       title: '封存內容',
@@ -67,7 +67,7 @@ var PatsChat = (function () {
 
     var hint = $('#list-hint');
     var isEmpty = state.conversations.length === 0 && !state.keyword;
-    hint.textContent = (state.view === 'group' && isEmpty) ? '你還沒有群聊，請建立' : '';
+    hint.textContent = (state.view === 'group' && isEmpty) ? '你還沒有群組，請建立' : '';
 
     $('#list-compose').classList.toggle('hidden', state.view === 'archive');
   }
@@ -157,12 +157,44 @@ var PatsChat = (function () {
       PATS.toast('通話模組尚未載入，請強制重新整理頁面。', 'error');
       return;
     }
+    if (conv && conv.type === 'group') {
+      startGroupCall(conv);
+      return;
+    }
     var peer = peerOf(conv);
     if (!peer || !peer.id) {
       PATS.toast('找不到通話對象。請先開啟對話再撥打。', 'error');
       return;
     }
     PatsCall.dial(peer);
+  }
+
+  function startGroupCall(conv) {
+    function dialWith(full) {
+      var me = state.user && state.user.id;
+      var members = ((full && full.members) || []).filter(function (m) {
+        return m && m.id && m.id !== me;
+      }).map(function (m) {
+        return { id: m.id, name: m.name || full.title || m.id };
+      });
+      if (!members.length) {
+        PATS.toast('群組沒有其他成員可通話。', 'error');
+        return;
+      }
+      if (!PatsCall.dialGroup) {
+        PATS.toast('請強制重新整理以載入群組通話功能。', 'error');
+        return;
+      }
+      PatsCall.dialGroup(members, (full && full.title) || '群組通話');
+    }
+
+    if (conv.members && conv.members.length) {
+      dialWith(conv);
+      return;
+    }
+    PATS.rpc('listMessages', { conversationId: conv.id, limit: 1 })
+      .then(function (data) { dialWith(data.conversation || conv); })
+      .catch(handleError);
   }
 
   function renderPlaceholder() {
@@ -192,10 +224,12 @@ var PatsChat = (function () {
         el('div', { class: 'sub', text: subtitle })
       ]),
       el('div', { class: 'actions' }, [
-        isPrivateChat(conv) ? el('button', {
-          class: 'icon-btn call-btn', type: 'button', title: '語音通話', 'aria-label': '語音通話',
+        el('button', {
+          class: 'icon-btn call-btn', type: 'button',
+          title: conv.type === 'group' ? '群組通話' : '語音通話',
+          'aria-label': conv.type === 'group' ? '群組通話' : '語音通話',
           onclick: function () { startCall(conv); }
-        }, [icon('call')]) : null,
+        }, [icon('call')]),
         el('button', {
           class: 'icon-btn', type: 'button', title: '更多',
           onclick: function (event) { openConversationMenu(event.currentTarget, conv); }
@@ -708,13 +742,11 @@ var PatsChat = (function () {
   function openConversationMenu(anchor, conv) {
     var archived = state.view === 'archive';
     var items = [];
-    if (isPrivateChat(conv)) {
-      items.push({
-        label: '語音通話',
-        icon: 'call',
-        onSelect: function () { startCall(conv); }
-      });
-    }
+    items.push({
+      label: conv.type === 'group' ? '群組通話' : '語音通話',
+      icon: 'call',
+      onSelect: function () { startCall(conv); }
+    });
     items.push(
       {
         label: archived ? '移回主要訊息' : '封存這個對話',
@@ -770,10 +802,10 @@ var PatsChat = (function () {
 
   function promptCreateGroup() {
     PATS.openModal({
-      title: '建立群聊',
+      title: '建立新群組',
       lead: '成員可一次加多人：用逗號、中文逗號或換行分隔電子郵件／帳號。之後仍可再新增。',
       fields: [
-        { name: 'name', label: '群聊名稱', placeholder: '例如：3人小組' },
+        { name: 'name', label: '群組名稱', placeholder: '例如：產品開發組' },
         {
           name: 'members',
           label: '成員（選填，可多人）',
@@ -782,7 +814,7 @@ var PatsChat = (function () {
           placeholder: '例：\na@company.com\nb@company.com\n或：a@company.com, b@company.com'
         }
       ],
-      confirmText: '建立群聊',
+      confirmText: '建立群組',
       onSubmit: function (values) {
         var members = values.members
           ? values.members.split(/[,，\n\r]+/).map(function (s) { return s.trim(); }).filter(Boolean)
@@ -792,7 +824,7 @@ var PatsChat = (function () {
             if (result.missing.length) {
               PATS.toast('找不到這些成員：' + result.missing.join('、'), 'error');
             } else {
-              PATS.toast('群聊已建立。', 'success');
+              PATS.toast('群組已建立。', 'success');
             }
             // RPC 成功後立刻讓彈窗關閉；列表與開啟對話在背景進行
             var id = result.conversationId;
@@ -823,7 +855,7 @@ var PatsChat = (function () {
     $('#list-more').addEventListener('click', function (event) {
       PATS.openMenu(event.currentTarget, [
         { label: '邀請朋友', icon: 'person_add', onSelect: promptInviteContact },
-        { label: '建立群聊', icon: 'group_add', onSelect: promptCreateGroup },
+        { label: '建立新群組', icon: 'group_add', onSelect: promptCreateGroup },
         { label: '重新整理', icon: 'refresh', onSelect: function () { refreshList(); } }
       ]);
     });
