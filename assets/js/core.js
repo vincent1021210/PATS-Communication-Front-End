@@ -261,12 +261,22 @@ var PATS = (function () {
     var inputs = {};
 
     var fields = (options.fields || []).map(function (field) {
-      var input = el('input', {
-        class: 'input',
-        type: field.type || 'text',
-        placeholder: field.placeholder || '',
-        value: field.value || ''
-      });
+      var input;
+      if (field.type === 'textarea') {
+        input = el('textarea', {
+          class: 'input',
+          rows: String(field.rows || 3),
+          placeholder: field.placeholder || ''
+        });
+        input.value = field.value || '';
+      } else {
+        input = el('input', {
+          class: 'input',
+          type: field.type || 'text',
+          placeholder: field.placeholder || '',
+          value: field.value || ''
+        });
+      }
       inputs[field.name] = input;
       return el('div', { class: 'field' }, [
         el('label', { class: 'field-label' }, [el('strong', { text: field.label })]),

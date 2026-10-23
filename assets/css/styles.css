@@ -167,6 +167,13 @@ a:hover { text-decoration: underline; }
   outline: none;
   transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
 }
+textarea.input {
+  height: auto;
+  min-height: 84px;
+  padding: 10px 12px;
+  line-height: 1.45;
+  resize: vertical;
+}
 .input:focus { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(59, 130, 246, .12); }
 
 .checkbox { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-700); cursor: pointer; }

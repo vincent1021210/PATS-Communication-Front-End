@@ -767,15 +767,21 @@ var PatsChat = (function () {
   function promptCreateGroup() {
     PATS.openModal({
       title: '建立新群組',
-      lead: '成員可用逗號分隔多個電子郵件或帳號，之後仍可再新增。',
+      lead: '成員可一次加多人：用逗號、中文逗號或換行分隔電子郵件／帳號。之後仍可再新增。',
       fields: [
         { name: 'name', label: '群組名稱', placeholder: '例如：產品開發組' },
-        { name: 'members', label: '成員（選填）', placeholder: 'a@company.com, b@company.com' }
+        {
+          name: 'members',
+          label: '成員（選填，可多人）',
+          type: 'textarea',
+          rows: 3,
+          placeholder: '例：\na@company.com\nb@company.com\n或：a@company.com, b@company.com'
+        }
       ],
       confirmText: '建立群組',
       onSubmit: function (values) {
         var members = values.members
-          ? values.members.split(/[,，\s]+/).filter(Boolean)
+          ? values.members.split(/[,，\n\r]+/).map(function (s) { return s.trim(); }).filter(Boolean)
           : [];
         return PATS.rpc('createGroup', { name: values.name, members: members })
           .then(function (result) {
