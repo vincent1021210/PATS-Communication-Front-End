@@ -653,6 +653,14 @@ select.email-domain {
   box-shadow: var(--shadow-sm);
   white-space: pre-wrap; word-break: break-word;
 }
+.msg-link {
+  color: inherit;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.msg-link:hover { opacity: .88; }
+.msg.is-mine .msg-link { color: #fff; }
+.msg:not(.is-mine) .msg-link { color: var(--brand-700); }
 .msg.is-mine .bubble {
   background: var(--brand-600); color: #fff; border-color: var(--brand-600);
 }

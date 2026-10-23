@@ -261,6 +261,68 @@ var PatsChat = (function () {
     scrollToBottom();
   }
 
+  /* ---------------------------------------------------------- 氣泡網址可點 */
+
+  // 每次 match 新建 RegExp，避免 /g 的 lastIndex 狀態干擾
+  function urlPattern() {
+    return /https?:\/\/[^\s<>"'\u3000）】」』]+/g;
+  }
+
+  function trimUrlTrail(url) {
+    return String(url || '').replace(/[。．、，,.;:!?）】」』>)\]\}]+$/g, '');
+  }
+
+  function isSafeHttpUrl(url) {
+    try {
+      var u = new URL(url);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function fillLinkedText(container, text) {
+    container.textContent = '';
+    var raw = String(text == null ? '' : text);
+    if (!raw) return;
+    var re = urlPattern();
+    var last = 0;
+    var m;
+    while ((m = re.exec(raw))) {
+      var full = m[0];
+      var href = trimUrlTrail(full);
+      var start = m.index;
+      var end = start + full.length;
+      // 尾端被剝掉的標點仍當普通文字
+      var trail = full.slice(href.length);
+      if (start > last) {
+        container.appendChild(document.createTextNode(raw.slice(last, start)));
+      }
+      if (href && isSafeHttpUrl(href)) {
+        var a = document.createElement('a');
+        a.className = 'msg-link';
+        a.href = href;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = href;
+        container.appendChild(a);
+        if (trail) container.appendChild(document.createTextNode(trail));
+      } else {
+        container.appendChild(document.createTextNode(full));
+      }
+      last = end;
+    }
+    if (last < raw.length) {
+      container.appendChild(document.createTextNode(raw.slice(last)));
+    }
+  }
+
+  function bubbleNode(body) {
+    var bubble = el('div', { class: 'bubble' });
+    fillLinkedText(bubble, body);
+    return bubble;
+  }
+
   function renderMessages(container, messages, appending) {
     var lastDay = appending ? thread.day : '';
     var previousSender = appending ? thread.sender : '';
@@ -308,7 +370,7 @@ var PatsChat = (function () {
                : PATS.avatarNode(message.senderName, message.senderAvatar),
         el('div', { class: 'stack' }, [
           showSender ? el('div', { class: 'sender', text: message.senderName }) : null,
-          el('div', { class: 'bubble', text: message.body }),
+          bubbleNode(message.body),
           el('div', { class: 'time', text: PATS.formatTime(message.createdAt) })
         ])
       ]));
