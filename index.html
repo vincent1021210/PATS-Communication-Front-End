@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="PATS — 安全、高效、專注的企業級商務通訊平台。">
+  <meta name="description" content="PATS ??安全?��??�、�?注�?企業級�??�通�?平台??>
   <meta name="theme-color" content="#2563eb">
-  <title>PATS · 學生通訊</title>
+  <title>PATS · 學�??��?</title>
 
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='16' y='22' font-size='16' font-family='sans-serif' font-weight='700' fill='white' text-anchor='middle'>P</text></svg>">
 
@@ -14,16 +14,16 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=archive,arrow_back,badge,call,call_end,cameraswitch,chat,chat_bubble,chevron_right,child_care,delete_sweep,edit_square,error,forum,group_add,groups,history,history_edu,image,inbox,key,lock,lock_reset,login,logout,mail,manage_accounts,mark_email_read,mic,mic_off,mop,more_horiz,more_vert,person,person_add,pin,refresh,report,save,school,search,send,settings,shield,storage,supervisor_account,unarchive,videocam,videocam_off,visibility,visibility_off&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/styles.css?v=20261023z">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20261024b">
 </head>
 
 <body>
-  <!-- 開場載入 ------------------------------------------------------- -->
+  <!-- ?�場載入 ------------------------------------------------------- -->
   <div id="loading" class="loading-veil">
-    <div class="spinner" role="status" aria-label="載入中"></div>
+    <div class="spinner" role="status" aria-label="載入�?></div>
   </div>
 
-  <!-- 登入頁 --------------------------------------------------------- -->
+  <!-- ?�入??--------------------------------------------------------- -->
   <section id="auth" class="auth hidden">
     <aside class="auth-brand">
       <div class="auth-logo">
@@ -35,26 +35,26 @@
       </div>
 
       <div class="auth-pitch">
-        <h2>企業級通訊解決方案</h2>
-        <p>安全、高效、專注的商務溝通平台。提升團隊協作效率，保護企業資訊安全。</p>
+        <h2>企業級通�?�?��?��?</h2>
+        <p>安全?��??�、�?注�??��?溝通平?�。�??��??��?作�??��?保護企業資�?安全??/p>
       </div>
 
       <div class="auth-note">
         <span class="material-symbols-outlined">shield</span>
-        <span>密碼加密儲存，連線全程加密</span>
+        <span>密碼?��??��?，�???��??��?</span>
       </div>
     </aside>
 
     <main class="auth-main">
       <div class="auth-card card">
-      <!-- 登入 ------------------------------------------------------ -->
+      <!-- ?�入 ------------------------------------------------------ -->
       <div id="login-panel">
         <div class="auth-mark"><span class="material-symbols-outlined">login</span></div>
-        <h2 class="auth-title">歡迎回來</h2>
-        <p class="auth-sub">使用 Google 帳號快速登入，或改以帳號密碼登入</p>
+        <h2 class="auth-title">歡�??��?</h2>
+        <p class="auth-sub">使用 Google 帳�?快速登?��??�改以帳?��?碼登??/p>
 
         <div id="google-slot" class="google-slot"></div>
-        <div class="auth-divider">或使用帳號密碼</div>
+        <div class="auth-divider">?�使?�帳?��?�?/div>
 
         <form id="login-form" class="auth-form" autocomplete="on">
           <div id="login-error" class="form-error hidden">
@@ -63,7 +63,7 @@
           </div>
 
           <div class="field">
-            <label class="field-label" for="login-account"><strong>電子郵件 / 帳號</strong></label>
+            <label class="field-label" for="login-account"><strong>?��??�件 / 帳�?</strong></label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">mail</span>
               <input id="login-account" name="account" type="text"
@@ -74,12 +74,12 @@
           <div class="field">
             <label class="field-label" for="login-password">
               <strong>密碼</strong>
-              <a href="#" id="forgot-link">忘記密碼？</a>
+              <a href="#" id="forgot-link">忘�?密碼�?/a>
             </label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">lock</span>
               <input id="login-password" name="password" type="password"
-                     placeholder="••••••••" autocomplete="current-password" required>
+                     placeholder="?�••••••�? autocomplete="current-password" required>
               <button type="button" class="icon-btn" data-toggle-password="login-password"
                       aria-label="顯示密碼">
                 <span class="material-symbols-outlined">visibility_off</span>
@@ -89,29 +89,29 @@
 
           <label class="checkbox">
             <input id="login-remember" type="checkbox">
-            <span>保持登入狀態</span>
+            <span>保�??�入?�??/span>
           </label>
 
-          <button id="login-submit" type="submit" class="btn btn-primary btn-block">登入</button>
+          <button id="login-submit" type="submit" class="btn btn-primary btn-block">?�入</button>
         </form>
 
         <p class="auth-footer">
-          還沒有帳號？ <a href="#" id="go-register">立即註冊</a>
+          ?��??�帳?��? <a href="#" id="go-register">立即註�?</a>
         </p>
       </div>
 
-      <!-- 註冊 ------------------------------------------------------ -->
+      <!-- 註�? ------------------------------------------------------ -->
       <div id="register-panel" class="hidden">
         <div class="auth-mark"><span class="material-symbols-outlined">person_add</span></div>
-        <h2 class="auth-title">建立帳號</h2>
-        <p class="auth-sub" id="register-sub">使用 Google 帳號即可建立並登入</p>
+        <h2 class="auth-title">建�?帳�?</h2>
+        <p class="auth-sub" id="register-sub">使用 Google 帳�??�可建�?並登??/p>
 
         <div id="google-slot-register" class="google-slot"></div>
-        <div class="auth-divider" id="register-divider">或自行填寫資料</div>
+        <div class="auth-divider" id="register-divider">?�自行填寫�???/div>
 
         <ol class="steps" id="register-steps">
-          <li class="step is-active" data-step="1"><span>1</span>填寫資料</li>
-          <li class="step" data-step="2"><span>2</span>驗證信箱</li>
+          <li class="step is-active" data-step="1"><span>1</span>填寫資�?</li>
+          <li class="step" data-step="2"><span>2</span>驗�?信箱</li>
         </ol>
 
         <div id="register-error" class="form-error hidden">
@@ -122,16 +122,16 @@
         <form id="register-form" class="auth-form" autocomplete="on">
 
           <div class="field">
-            <label class="field-label" for="register-name"><strong>顯示名稱</strong></label>
+            <label class="field-label" for="register-name"><strong>顯示?�稱</strong></label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">badge</span>
-              <input id="register-name" type="text" placeholder="王小明"
+              <input id="register-name" type="text" placeholder="?��???
                      autocomplete="name" maxlength="40" required>
             </div>
           </div>
 
           <div class="field">
-            <label class="field-label" for="register-email"><strong>電子郵件</strong></label>
+            <label class="field-label" for="register-email"><strong>?��??�件</strong></label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">mail</span>
               <input id="register-email" type="email" placeholder="name@gmail.com"
@@ -142,11 +142,11 @@
           <div class="field">
             <label class="field-label" for="register-password">
               <strong>密碼</strong>
-              <span class="field-note">至少 8 個字元</span>
+              <span class="field-note">?��? 8 ?��???/span>
             </label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">lock</span>
-              <input id="register-password" type="password" placeholder="設定你的密碼"
+              <input id="register-password" type="password" placeholder="設�?你�?密碼"
                      autocomplete="new-password" required>
               <button type="button" class="icon-btn" data-toggle-password="register-password"
                       aria-label="顯示密碼">
@@ -156,34 +156,34 @@
           </div>
 
           <div class="field">
-            <label class="field-label" for="register-confirm"><strong>確認密碼</strong></label>
+            <label class="field-label" for="register-confirm"><strong>確�?密碼</strong></label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">lock_reset</span>
-              <input id="register-confirm" type="password" placeholder="再次輸入密碼"
+              <input id="register-confirm" type="password" placeholder="?�次輸入密碼"
                      autocomplete="new-password" required>
             </div>
           </div>
 
-          <!-- 只有在後端設定了邀請碼時才會顯示 -->
+          <!-- ?��??��?端設定�??�請碼?��??�顯�?-->
           <div class="field hidden" id="invite-field">
-            <label class="field-label" for="register-invite"><strong>邀請碼</strong></label>
+            <label class="field-label" for="register-invite"><strong>?�請碼</strong></label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">key</span>
-              <input id="register-invite" type="text" placeholder="請向管理員索取">
+              <input id="register-invite" type="text" placeholder="請�?管�??�索??>
             </div>
           </div>
 
           <button id="register-submit" type="submit" class="btn btn-primary btn-block">
-            寄送驗證碼
+            寄送�?證碼
           </button>
         </form>
 
-        <!-- 步驟二：輸入信中的驗證碼 -->
+        <!-- 步�?二�?輸入信中?��?證碼 -->
         <form id="register-verify-form" class="auth-form hidden">
           <div class="field">
             <label class="field-label" for="register-code">
-              <strong>驗證碼</strong>
-              <span class="field-note">6 位數字，15 分鐘內有效</span>
+              <strong>驗�?�?/strong>
+              <span class="field-note">6 位數字�?15 ?��??��???/span>
             </label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">pin</span>
@@ -192,31 +192,31 @@
             </div>
           </div>
           <button id="register-verify-submit" type="submit" class="btn btn-primary btn-block">
-            完成註冊
+            完�?註�?
           </button>
           <button id="register-resend" type="button" class="btn btn-ghost btn-block">
-            沒收到？重新寄送
+            沒收?��??�新寄�?
           </button>
           <button id="register-back" type="button" class="btn btn-quiet btn-block">
-            上一步，修改資料
+            上�?步�?修改資�?
           </button>
         </form>
 
         <p class="auth-footer">
-          已經有帳號了？ <a href="#" id="go-login">返回登入</a>
+          已�??�帳?��?�?<a href="#" id="go-login">返�??�入</a>
         </p>
       </div>
 
-      <!-- 忘記密碼 -------------------------------------------------- -->
+      <!-- 忘�?密碼 -------------------------------------------------- -->
       <div id="reset-panel" class="hidden">
         <div class="auth-mark"><span class="material-symbols-outlined">lock_reset</span></div>
-        <h2 class="auth-title">重設密碼</h2>
-        <p class="auth-sub" id="reset-sub">輸入你的電子郵件，我們會寄一組驗證碼給你</p>
+        <h2 class="auth-title">?�設密碼</h2>
+        <p class="auth-sub" id="reset-sub">輸入你�??��??�件，�??��?寄�?組�?證碼給�?</p>
 
         <ol class="steps" id="reset-steps">
-          <li class="step is-active" data-step="1"><span>1</span>驗證信箱</li>
-          <li class="step" data-step="2"><span>2</span>輸入驗證碼</li>
-          <li class="step" data-step="3"><span>3</span>設定新密碼</li>
+          <li class="step is-active" data-step="1"><span>1</span>驗�?信箱</li>
+          <li class="step" data-step="2"><span>2</span>輸入驗�?�?/li>
+          <li class="step" data-step="3"><span>3</span>設�??��?�?/li>
         </ol>
 
         <div id="reset-error" class="form-error hidden">
@@ -224,10 +224,10 @@
           <span data-role="text"></span>
         </div>
 
-        <!-- 步驟一 -->
+        <!-- 步�?一 -->
         <form id="reset-email-form" class="auth-form">
           <div class="field">
-            <label class="field-label" for="reset-email"><strong>電子郵件</strong></label>
+            <label class="field-label" for="reset-email"><strong>?��??�件</strong></label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">mail</span>
               <input id="reset-email" type="email" placeholder="name@gmail.com"
@@ -235,16 +235,16 @@
             </div>
           </div>
           <button id="reset-email-submit" type="submit" class="btn btn-primary btn-block">
-            寄送驗證碼
+            寄送�?證碼
           </button>
         </form>
 
-        <!-- 步驟二 -->
+        <!-- 步�?�?-->
         <form id="reset-code-form" class="auth-form hidden">
           <div class="field">
             <label class="field-label" for="reset-code">
-              <strong>驗證碼</strong>
-              <span class="field-note">6 位數字，15 分鐘內有效</span>
+              <strong>驗�?�?/strong>
+              <span class="field-note">6 位數字�?15 ?��??��???/span>
             </label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">pin</span>
@@ -253,23 +253,23 @@
             </div>
           </div>
           <button id="reset-code-submit" type="submit" class="btn btn-primary btn-block">
-            驗證
+            驗�?
           </button>
           <button id="reset-resend" type="button" class="btn btn-ghost btn-block">
-            沒收到？重新寄送
+            沒收?��??�新寄�?
           </button>
         </form>
 
-        <!-- 步驟三 -->
+        <!-- 步�?�?-->
         <form id="reset-password-form" class="auth-form hidden">
           <div class="field">
             <label class="field-label" for="reset-new">
-              <strong>新密碼</strong>
-              <span class="field-note">至少 8 個字元</span>
+              <strong>?��?�?/strong>
+              <span class="field-note">?��? 8 ?��???/span>
             </label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">lock</span>
-              <input id="reset-new" type="password" placeholder="設定新密碼"
+              <input id="reset-new" type="password" placeholder="設�??��?�?
                      autocomplete="new-password" required>
               <button type="button" class="icon-btn" data-toggle-password="reset-new"
                       aria-label="顯示密碼">
@@ -278,99 +278,99 @@
             </div>
           </div>
           <div class="field">
-            <label class="field-label" for="reset-confirm"><strong>確認新密碼</strong></label>
+            <label class="field-label" for="reset-confirm"><strong>確�??��?�?/strong></label>
             <div class="input-wrap">
               <span class="material-symbols-outlined">lock_reset</span>
-              <input id="reset-confirm" type="password" placeholder="再次輸入新密碼"
+              <input id="reset-confirm" type="password" placeholder="?�次輸入?��?�?
                      autocomplete="new-password" required>
             </div>
           </div>
           <button id="reset-password-submit" type="submit" class="btn btn-primary btn-block">
-            更新密碼並登入
+            ?�新密碼並登??
           </button>
         </form>
 
         <p class="auth-footer">
-          想起來了？ <a href="#" id="reset-back">返回登入</a>
+          ?�起來�?�?<a href="#" id="reset-back">返�??�入</a>
         </p>
       </div>
       </div>
     </main>
   </section>
 
-  <!-- 主應用 --------------------------------------------------------- -->
+  <!-- 主�???--------------------------------------------------------- -->
   <div id="app" class="app hidden" data-mobile="list">
-    <!-- 側邊導覽 -->
-    <nav class="rail" aria-label="主要導覽">
+    <!-- ?��?導覽 -->
+    <nav class="rail" aria-label="主�?導覽">
       <div class="rail-identity">
         <div class="avatar avatar-lg" id="me-avatar" aria-hidden="true">P</div>
         <div class="meta">
           <div class="name" id="me-name">PATS</div>
-          <div class="role" id="me-role">學生通訊</div>
-          <div class="status">上線中</div>
+          <div class="role" id="me-role">學�??��?</div>
+          <div class="status">上�?�?/div>
         </div>
       </div>
 
       <div class="rail-nav">
         <button class="rail-link hidden" data-view="guardian">
           <span class="material-symbols-outlined">report</span>
-          <span class="label">違規與舉報</span>
+          <span class="label">?��??��???/span>
         </button>
         <button class="rail-link is-active" data-view="dm">
           <span class="material-symbols-outlined">chat</span>
-          <span class="label">私訊</span>
+          <span class="label">私�?</span>
           <span class="badge count hidden" data-count="dm">0</span>
         </button>
         <button class="rail-link" data-view="group">
           <span class="material-symbols-outlined">groups</span>
-          <span class="label">群組</span>
+          <span class="label">群�?</span>
           <span class="badge count hidden" data-count="group">0</span>
         </button>
         <button class="rail-link" data-view="archive">
           <span class="material-symbols-outlined">archive</span>
-          <span class="label">封存</span>
+          <span class="label">封�?</span>
         </button>
         <button class="rail-link" data-view="settings">
           <span class="material-symbols-outlined">settings</span>
-          <span class="label">設定</span>
+          <span class="label">設�?</span>
         </button>
         <button class="rail-link rail-desktop-only hidden" data-view="call" aria-hidden="true" tabindex="-1">
           <span class="material-symbols-outlined">call</span>
-          <span class="label">通話設定</span>
+          <span class="label">?�話設�?</span>
         </button>
-        <button type="button" class="rail-link rail-mobile-only" id="rail-more" aria-label="更多">
+        <button type="button" class="rail-link rail-mobile-only" id="rail-more" aria-label="?��?">
           <span class="material-symbols-outlined">more_horiz</span>
-          <span class="label">更多</span>
+          <span class="label">?��?</span>
         </button>
       </div>
 
       <div class="rail-spacer"></div>
 
       <div class="rail-foot">
-        <div id="signal-badge" class="signal-badge hidden" aria-live="polite">通話未設定</div>
+        <div id="signal-badge" class="signal-badge hidden" aria-live="polite">?�話?�設�?/div>
         <button class="rail-link rail-desktop-only" data-view="profile">
           <span class="material-symbols-outlined">person</span>
-          <span class="label">個人資料</span>
+          <span class="label">?�人資�?</span>
         </button>
         <button class="rail-link is-danger rail-desktop-only" data-action="logout">
           <span class="material-symbols-outlined">logout</span>
-          <span class="label">登出</span>
+          <span class="label">?�出</span>
         </button>
       </div>
     </nav>
 
-    <!-- 對話列表 -->
+    <!-- 對話?�表 -->
     <section class="list-pane" id="list-pane">
       <div id="signal-badge-mobile" class="signal-strip hidden" aria-live="polite"></div>
       <header class="pane-head">
-        <button type="button" class="avatar mobile-me hidden" id="me-avatar-mobile" title="個人資料" aria-label="個人資料"></button>
+        <button type="button" class="avatar mobile-me hidden" id="me-avatar-mobile" title="?�人資�?" aria-label="?�人資�?"></button>
         <h2 id="list-title">私人訊息</h2>
         <span class="hint" id="list-hint"></span>
         <div class="actions">
-          <button class="icon-btn" id="list-compose" title="發起新對話">
+          <button class="icon-btn" id="list-compose" title="?�起?��?�?>
             <span class="material-symbols-outlined">edit_square</span>
           </button>
-          <button class="icon-btn" id="list-more" title="更多">
+          <button class="icon-btn" id="list-more" title="?��?">
             <span class="material-symbols-outlined">more_vert</span>
           </button>
         </div>
@@ -379,31 +379,31 @@
       <div class="pane-search">
         <div class="input-wrap">
           <span class="material-symbols-outlined">search</span>
-          <input id="list-search" type="search" placeholder="搜尋訊息或聯絡人">
+          <input id="list-search" type="search" placeholder="?��?訊息?�聯絡人">
         </div>
       </div>
 
       <div class="conv-list scroll-y" id="conv-list"></div>
     </section>
 
-    <!-- 對話內容 -->
+    <!-- 對話?�容 -->
     <section class="chat-pane" id="chat-pane"></section>
 
-    <!-- 設定 -->
+    <!-- 設�? -->
     <section class="settings-pane scroll-y hidden" id="settings-pane"></section>
 
-    <!-- 家長專用：孩子的違規與舉報 -->
+    <!-- 家長專用：孩子�??��??��???-->
     <section class="settings-pane scroll-y hidden" id="guardian-pane">
       <div class="settings-inner">
-        <h2 class="settings-title">違規與舉報</h2>
-        <p class="settings-lead" id="guardian-lead">查看孩子在校的違規與被舉報紀錄。</p>
+        <h2 class="settings-title">?��??��???/h2>
+        <p class="settings-lead" id="guardian-lead">?��?孩�??�校?��?規�?被�??��??��?/p>
 
         <section class="card settings-card">
           <div class="settings-card-head">
             <div class="glyph"><span class="material-symbols-outlined">child_care</span></div>
             <div>
-              <h3>綁定的學生</h3>
-              <p id="guardian-student">尚未綁定</p>
+              <h3>綁�??�學??/h3>
+              <p id="guardian-student">尚未綁�?</p>
             </div>
           </div>
         </section>
@@ -411,9 +411,9 @@
         <section class="card settings-card">
           <div class="empty-state">
             <div class="glyph"><span class="material-symbols-outlined">inbox</span></div>
-            <h3>目前沒有任何紀錄</h3>
-            <p>孩子若有違規或被舉報，紀錄會顯示在這裡。<br>
-              家長帳號不參與聊天功能。</p>
+            <h3>?��?沒�?任�?紀??/h3>
+            <p>孩�??��??��??�被?�報，�??��?顯示?�這裡??br>
+              家長帳�?不�??��?天�??��?/p>
           </div>
         </section>
       </div>
@@ -427,34 +427,34 @@
       <div id="call-grid" class="call-grid" data-count="0"></div>
       <div id="call-audio-strip" class="call-audio-strip hidden"></div>
       <div id="call-remote-note" class="call-remote-note hidden"></div>
-      <div class="call-tap-hint">點一下畫面開始播放</div>
+      <div class="call-tap-hint">點�?下畫?��?始播??/div>
     </div>
     <div class="call-card">
       <div class="call-head">
         <div class="avatar avatar-lg" id="call-avatar" aria-hidden="true">P</div>
         <h2 id="call-name">對方</h2>
-        <p id="call-status">撥號中</p>
+        <p id="call-status">?��?�?/p>
       </div>
       <div class="call-actions">
-        <button id="call-mute" class="call-round" type="button" aria-label="靜音麥克風">
+        <button id="call-mute" class="call-round" type="button" aria-label="?�音麥�?�?>
           <span class="material-symbols-outlined">mic</span>
         </button>
-        <button id="call-camera" class="call-round hidden" type="button" aria-label="關閉鏡頭">
+        <button id="call-camera" class="call-round hidden" type="button" aria-label="?��??�頭">
           <span class="material-symbols-outlined">videocam</span>
         </button>
-        <button id="call-flip" class="call-round hidden" type="button" aria-label="切換鏡頭">
+        <button id="call-flip" class="call-round hidden" type="button" aria-label="?��??�頭">
           <span class="material-symbols-outlined">cameraswitch</span>
         </button>
-        <button id="call-reject" class="call-round is-danger hidden" type="button" aria-label="拒絕">
+        <button id="call-reject" class="call-round is-danger hidden" type="button" aria-label="?��?">
           <span class="material-symbols-outlined">call_end</span>
         </button>
-        <button id="call-accept-audio" class="call-round is-ok-soft hidden" type="button" aria-label="語音接聽" title="語音接聽">
+        <button id="call-accept-audio" class="call-round is-ok-soft hidden" type="button" aria-label="語音?�聽" title="語音?�聽">
           <span class="material-symbols-outlined">call</span>
         </button>
-        <button id="call-accept" class="call-round is-ok hidden" type="button" aria-label="接聽">
+        <button id="call-accept" class="call-round is-ok hidden" type="button" aria-label="?�聽">
           <span class="material-symbols-outlined">call</span>
         </button>
-        <button id="call-hangup" class="call-round is-danger hidden" type="button" aria-label="掛斷">
+        <button id="call-hangup" class="call-round is-danger hidden" type="button" aria-label="?�斷">
           <span class="material-symbols-outlined">call_end</span>
         </button>
       </div>
@@ -469,13 +469,13 @@
 
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script src="assets/js/config.js?v=20261024a"></script>
-  <script src="assets/js/core.js?v=20261023c"></script>
+  <script src="assets/js/core.js?v=20261024b"></script>
   <script src="assets/js/auth.js?v=20261022r"></script>
   <script src="assets/js/AudioStreamManager.js?v=20261023w"></script>
   <script src="assets/js/WebRTCManager.js?v=20261023w"></script>
   <script src="assets/js/call-tones.js?v=20261022x"></script>
   <script src="assets/js/call.js?v=20261023x"></script>
-  <script src="assets/js/chat.js?v=20261023c"></script>
+  <script src="assets/js/chat.js?v=20261024b"></script>
   <script src="assets/js/settings.js?v=20261022z"></script>
   <script src="assets/js/main.js?v=20261022y"></script>
 </body>

@@ -441,9 +441,44 @@ var PatsChat = (function () {
     if (url) img.src = url;
   }
 
+  /** 手機相簿常給空 MIME 或 HEIC；不能只靠 file.type === image/* */
+  function looksLikeImageFile(file) {
+    if (!file) return false;
+    var t = String(file.type || '').toLowerCase();
+    if (/^image\//.test(t)) return true;
+    if (t) return false;
+    var n = String(file.name || '').toLowerCase();
+    // 空副檔名也試（部分 Android／iOS 相簿沒檔名）
+    if (!n) return true;
+    return /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif)$/.test(n);
+  }
+
+  function canvasToJpegBlob(canvas, quality) {
+    return new Promise(function (resolve, reject) {
+      if (typeof canvas.toBlob === 'function') {
+        canvas.toBlob(function (blob) {
+          if (blob) resolve(blob);
+          else reject(PATS.fail('IMAGE_BAD_TYPE'));
+        }, 'image/jpeg', quality);
+        return;
+      }
+      try {
+        var dataUrl = canvas.toDataURL('image/jpeg', quality);
+        var comma = dataUrl.indexOf(',');
+        var b64 = comma >= 0 ? dataUrl.slice(comma + 1) : '';
+        var bin = atob(b64);
+        var arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i += 1) arr[i] = bin.charCodeAt(i);
+        resolve(new Blob([arr], { type: 'image/jpeg' }));
+      } catch (err) {
+        reject(PATS.fail('IMAGE_BAD_TYPE'));
+      }
+    });
+  }
+
   function compressImageFile(file) {
     return new Promise(function (resolve, reject) {
-      if (!file || !/^image\//.test(file.type || '')) {
+      if (!looksLikeImageFile(file)) {
         reject(PATS.fail('IMAGE_BAD_TYPE'));
         return;
       }
@@ -467,11 +502,7 @@ var PatsChat = (function () {
           var ctx = canvas.getContext('2d');
           ctx.drawImage(image, 0, 0, tw, th);
           URL.revokeObjectURL(url);
-          canvas.toBlob(function (blob) {
-            if (!blob) {
-              reject(PATS.fail('IMAGE_BAD_TYPE'));
-              return;
-            }
+          canvasToJpegBlob(canvas, IMAGE_JPEG_QUALITY).then(function (blob) {
             if (blob.size > IMAGE_MAX_BYTES) {
               reject(PATS.fail('IMAGE_TOO_LARGE'));
               return;
@@ -491,7 +522,7 @@ var PatsChat = (function () {
             };
             reader.onerror = function () { reject(PATS.fail('IMAGE_BAD_TYPE')); };
             reader.readAsDataURL(blob);
-          }, 'image/jpeg', IMAGE_JPEG_QUALITY);
+          }).catch(reject);
         } catch (err) {
           try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
           reject(PATS.fail('IMAGE_BAD_TYPE'));
@@ -755,17 +786,20 @@ var PatsChat = (function () {
       placeholder: '輸入訊息…',
       'aria-label': '訊息內容'
     });
+    // 手機（尤其 iOS）對 display:none 的 input + 程式 click() 常打不開相簿；
+    // 改成透明 input 覆蓋按鈕，讓使用者直接點到 file input。
     var fileInput = el('input', {
       type: 'file',
-      accept: 'image/*',
-      class: 'hidden',
-      'aria-hidden': 'true',
-      tabIndex: '-1'
+      accept: 'image/*,image/heic,image/heif,.heic,.heif',
+      class: 'composer-file-input',
+      'aria-label': '傳送圖片'
     });
     var imageButton = el('button', {
       class: 'composer-attach', type: 'button',
-      title: '傳送圖片', 'aria-label': '傳送圖片'
+      title: '傳送圖片', 'aria-label': '傳送圖片',
+      tabIndex: '-1'
     }, [icon('image')]);
+    var attachWrap = el('div', { class: 'composer-attach-wrap' }, [imageButton, fileInput]);
     var sendButton = el('button', {
       class: 'send', type: 'submit', 'aria-label': '傳送', disabled: 'disabled'
     }, [icon('send')]);
@@ -786,18 +820,14 @@ var PatsChat = (function () {
       }
     });
 
-    imageButton.addEventListener('click', function () {
-      if (imageButton.disabled) return;
-      fileInput.click();
-    });
     fileInput.addEventListener('change', function () {
       var file = fileInput.files && fileInput.files[0];
       fileInput.value = '';
       if (!file) return;
-      sendChatImage(file, imageButton);
+      sendChatImage(file, attachWrap);
     });
 
-    var form = el('form', { class: 'composer' }, [imageButton, fileInput, textarea, sendButton]);
+    var form = el('form', { class: 'composer' }, [attachWrap, textarea, sendButton]);
     form.addEventListener('submit', function (event) {
       event.preventDefault();
       var body = textarea.value.trim();
@@ -1066,11 +1096,20 @@ var PatsChat = (function () {
       });
   }
 
-  function sendChatImage(file, imageButton) {
+  function setAttachBusy(attachWrap, busy) {
+    if (!attachWrap) return;
+    attachWrap.classList.toggle('is-busy', !!busy);
+    var input = attachWrap.querySelector('.composer-file-input');
+    if (input) input.disabled = !!busy;
+    var btn = attachWrap.querySelector('.composer-attach');
+    if (btn) btn.disabled = !!busy;
+  }
+
+  function sendChatImage(file, attachWrap) {
     var conversationId = state.activeId;
     if (!conversationId) return;
     var user = state.user || {};
-    if (imageButton) imageButton.disabled = true;
+    setAttachBusy(attachWrap, true);
     PATS.toast('傳送圖片中…');
 
     compressImageFile(file).then(function (packed) {
@@ -1122,7 +1161,7 @@ var PatsChat = (function () {
     }).catch(function (err) {
       handleError(err);
     }).then(function () {
-      if (imageButton) imageButton.disabled = false;
+      setAttachBusy(attachWrap, false);
     });
   }
 

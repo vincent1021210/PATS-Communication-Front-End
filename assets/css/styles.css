@@ -674,18 +674,33 @@ select.email-domain {
   background: var(--surface);
   border-top: 1px solid var(--line);
 }
+.composer-attach-wrap {
+  position: relative; flex: none;
+  width: 42px; height: 42px;
+}
 .composer-attach {
-  display: grid; place-items: center; flex: none;
-  width: 42px; height: 42px; border-radius: var(--r-full);
+  display: grid; place-items: center;
+  width: 100%; height: 100%; border-radius: var(--r-full);
   color: var(--ink-500); background: var(--surface-sunk);
   border: 1px solid var(--line);
+  pointer-events: none; /* 點擊交給覆蓋的 file input（iOS 才能開相簿） */
   transition: background-color .15s var(--ease), color .15s var(--ease);
 }
-.composer-attach:hover:not(:disabled) {
+.composer-attach-wrap:hover:not(.is-busy) .composer-attach {
   color: var(--brand-700); background: var(--brand-50);
 }
-.composer-attach:disabled { opacity: .45; cursor: not-allowed; }
+.composer-attach-wrap.is-busy { opacity: .45; }
 .composer-attach .material-symbols-outlined { font-size: 22px; }
+.composer-file-input {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0; margin: 0; padding: 0;
+  border: 0; cursor: pointer;
+  font-size: 16px; /* 避免 iOS 點擊時強制縮放 */
+}
+.composer-attach-wrap.is-busy .composer-file-input {
+  pointer-events: none; cursor: not-allowed;
+}
 .composer textarea {
   flex: 1; min-height: 42px; max-height: 160px; padding: 10px 14px;
   border: 1px solid var(--line); border-radius: var(--r-lg);

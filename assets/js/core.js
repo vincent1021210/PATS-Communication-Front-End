@@ -80,7 +80,7 @@ var PATS = (function () {
     EMPTY_MESSAGE: '訊息不可以是空的。',
     MESSAGE_TOO_LONG: '訊息長度超過上限。',
     IMAGE_TOO_LARGE: '圖片太大，請換一張或再壓縮後傳送。',
-    IMAGE_BAD_TYPE: '只支援常見圖片格式（請改用照片或 JPG）。',
+    IMAGE_BAD_TYPE: '這張圖無法傳送（手機請改選「照片」或 JPG／PNG，勿選 HEIC 原始檔）。',
     USE_SEND_CHAT_IMAGE: '請用圖片按鈕傳送圖片。',
     GROUP_NAME_REQUIRED: '請輸入群組名稱。',
     GOOGLE_LOGIN_NOT_CONFIGURED: '後端尚未設定 Google 用戶端 ID，請聯絡管理員。',
