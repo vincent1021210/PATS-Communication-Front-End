@@ -117,7 +117,17 @@ io.on('connection', function (socket) {
     relay(socket, 'ice-candidate', payload || {}, ack);
   });
 
+  socket.on('call-bind', function (payload) {
+    if (!socket.data.userId) return;
+    socket.data.inCallWith = String((payload && payload.peerId) || '').trim() || null;
+  });
+
+  socket.on('call-unbind', function () {
+    socket.data.inCallWith = null;
+  });
+
   socket.on('hang-up', function (payload, ack) {
+    socket.data.inCallWith = null;
     relay(socket, 'hung-up', payload || {}, ack);
   });
 
@@ -135,8 +145,20 @@ io.on('connection', function (socket) {
 
   socket.on('disconnect', function () {
     var userId = socket.data.userId;
+    var peerId = socket.data.inCallWith;
     var current = userId && users.get(userId);
     if (current && current.socketId === socket.id) users.delete(userId);
+    // 通話中一方信令斷線 → 通知對方回到聊天並提示
+    if (userId && peerId) {
+      var peer = users.get(peerId);
+      if (peer && peer.socketId) {
+        io.to(peer.socketId).emit('peer-network-lost', {
+          from: userId,
+          reason: 'signaling-disconnect'
+        });
+      }
+    }
+    socket.data.inCallWith = null;
   });
 });
 

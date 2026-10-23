@@ -425,11 +425,16 @@ var PatsCall = (function () {
         reason: reason || null,
         pageHidden: !!document.hidden,
         hasSession: !!session,
+        phase: session && session.phase,
         userId: currentUser && currentUser.id
       });
       // #endregion
       setSignalState('offline');
       scheduleReconnect();
+      // 己方網路斷線且通話中：關閉通話層回到聊天
+      if (session && (session.phase === 'active' || session.wasActive || session.phase === 'connecting')) {
+        finish('網路已中斷');
+      }
     });
     socket.on('connect_error', function () {
       setSignalState('offline');
@@ -440,6 +445,11 @@ var PatsCall = (function () {
     socket.on('call-accepted', onAccepted);
     socket.on('call-rejected', function () { finish('對方已拒絕'); });
     socket.on('hung-up', function () { finish('通話已結束'); });
+    socket.on('peer-network-lost', function (payload) {
+      if (!session) return;
+      if (payload && payload.from && session.peerId && payload.from !== session.peerId) return;
+      finish('對方網路已斷線');
+    });
     socket.on('call-failed', function (payload) {
       if (payload && payload.reason === 'offline') finish('對方不在線上');
     });
@@ -728,11 +738,42 @@ var PatsCall = (function () {
     }).catch(function () { finish('重新連線失敗'); });
   }
 
+  function bindCallPresence() {
+    if (!socket || !socket.connected || !session || !session.peerId) return;
+    socket.emit('call-bind', { peerId: session.peerId, callId: session.callId });
+  }
+
+  function unbindCallPresence() {
+    if (!socket || !socket.connected) return;
+    try { socket.emit('call-unbind', {}); } catch (e) { /* ignore */ }
+  }
+
+  function clearNetworkLostWatch() {
+    if (session && session.networkLostTimer) {
+      clearTimeout(session.networkLostTimer);
+      session.networkLostTimer = null;
+    }
+  }
+
+  function scheduleNetworkLostWatch() {
+    if (!session || session.networkLostTimer) return;
+    session.networkLostTimer = setTimeout(function () {
+      if (!session) return;
+      session.networkLostTimer = null;
+      if (session.wasActive || session.phase === 'active') {
+        finish('對方網路已斷線');
+      }
+    }, 8000);
+  }
+
   function markActive() {
     if (!session || session.phase === 'active') return;
     session.phase = 'active';
+    session.wasActive = true;
+    clearNetworkLostWatch();
     setActions('active');
     startTimer();
+    bindCallPresence();
   }
 
   function onConnectionState(state) {
@@ -742,7 +783,8 @@ var PatsCall = (function () {
       state: state,
       isCaller: !!(session && session.isCaller),
       retried: !!(session && session.retried),
-      phase: session && session.phase
+      phase: session && session.phase,
+      wasActive: !!(session && session.wasActive)
     });
     // #endregion
     if (state === 'connected' || state === 'completed') {
@@ -751,10 +793,19 @@ var PatsCall = (function () {
     }
     if (state === 'disconnected') {
       setStatus('連線不穩，正在重新連線…');
+      if (session.wasActive || session.phase === 'active') scheduleNetworkLostWatch();
       scheduleRestart();
       return;
     }
-    if (state === 'failed') restart();
+    if (state === 'failed') {
+      if (session.wasActive || session.phase === 'active') {
+        if (session.retried) {
+          finish('對方網路已斷線');
+          return;
+        }
+      }
+      restart();
+    }
   }
 
   function scheduleRestart() {
@@ -775,11 +826,16 @@ var PatsCall = (function () {
       iceServerCount: (ice || []).length,
       hasTurn: hasTurnUrl_(ice),
       urlKinds: urlKinds_(ice),
-      iceSource: session.iceSource || null
+      iceSource: session.iceSource || null,
+      wasActive: !!session.wasActive
     }, session.retried ? 'post-fix' : 'pre-fix');
     // #endregion
     if (session.retried) {
-      finish('目前無法建立語音連線（不同網路／4G 常見）。已設定 TURN 中繼，若仍失敗可能是配額或網路阻擋；請雙方開同一 Wi‑Fi 再試，或稍後自架 TURN。');
+      finish(
+        session.wasActive
+          ? '對方網路已斷線'
+          : '目前無法建立語音連線（不同網路／4G 常見）。已設定 TURN 中繼，若仍失敗可能是配額或網路阻擋；請雙方開同一 Wi‑Fi 再試，或稍後自架 TURN。'
+      );
       return;
     }
     session.retried = true;
@@ -787,7 +843,9 @@ var PatsCall = (function () {
     if (session.isCaller) {
       session.pc.restartIce().then(function (offer) {
         emit('renegotiate', { offer: offer });
-      }).catch(function () { finish('重新連線失敗'); });
+      }).catch(function () {
+        finish(session && session.wasActive ? '對方網路已斷線' : '重新連線失敗');
+      });
     } else {
       emit('request-restart', {});
     }
@@ -859,6 +917,8 @@ var PatsCall = (function () {
       offer: null,
       retried: false,
       restartTimer: null,
+      networkLostTimer: null,
+      wasActive: false,
       earlyIce: [],
       resolvedIce: null,
       iceSource: null
@@ -876,6 +936,7 @@ var PatsCall = (function () {
       message: message || null,
       wasCaller: !!(session && session.isCaller),
       phase: session && session.phase,
+      wasActive: !!(session && session.wasActive),
       callId: session && session.callId,
       peerId: session && session.peerId,
       pageHidden: !!document.hidden,
@@ -885,8 +946,10 @@ var PatsCall = (function () {
     // #endregion
     generation += 1;
     stopTimer();
+    unbindCallPresence();
     if (session) {
       if (session.restartTimer) clearTimeout(session.restartTimer);
+      clearNetworkLostWatch();
       if (session.pc) session.pc.close();
       AudioStreamManager.stop(session.stream);
     }
@@ -898,7 +961,10 @@ var PatsCall = (function () {
       audio.srcObject = null;
     }
     hideLayer();
-    if (message) PATS.toast(message);
+    if (message) {
+      var tone = /斷線|中斷|失敗|無法|拒絕|不在/.test(message) ? 'error' : undefined;
+      PATS.toast(message, tone);
+    }
   }
 
   function newId() {
