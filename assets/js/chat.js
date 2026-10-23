@@ -32,18 +32,18 @@ var PatsChat = (function () {
       emptyAction: { label: '邀請朋友', handler: promptInviteContact },
       placeholderIcon: 'chat_bubble',
       placeholderTitle: '請選擇一個對話',
-      placeholderText: '從左側列表選擇現有的聯絡人或群組，開始傳送訊息。'
+      placeholderText: '從左側列表選擇現有的聯絡人或群聊，開始傳送訊息。'
     },
     group: {
-      title: '多人討論',
-      search: '搜尋群組或聯絡人',
+      title: '群聊',
+      search: '搜尋群聊…',
       emptyIcon: 'groups',
-      emptyTitle: '你還沒有群組，請建立',
-      emptyText: '建立一個群組，把團隊成員拉進來一起討論。',
-      emptyAction: { label: '建立新群組', handler: promptCreateGroup },
+      emptyTitle: '你還沒有群聊',
+      emptyText: '建立一個群聊，把成員拉進來一起討論。',
+      emptyAction: { label: '建立群聊', handler: promptCreateGroup },
       placeholderIcon: 'forum',
-      placeholderTitle: '開始多人討論',
-      placeholderText: '選擇左側的群組，或建立一個新的群組來與團隊進行協作與溝通。'
+      placeholderTitle: '開始群聊',
+      placeholderText: '選擇左側的群聊，或建立一個新的群聊與大家一起討論。'
     },
     archive: {
       title: '封存內容',
@@ -67,7 +67,7 @@ var PatsChat = (function () {
 
     var hint = $('#list-hint');
     var isEmpty = state.conversations.length === 0 && !state.keyword;
-    hint.textContent = (state.view === 'group' && isEmpty) ? '你還沒有群組，請建立' : '';
+    hint.textContent = (state.view === 'group' && isEmpty) ? '你還沒有群聊，請建立' : '';
 
     $('#list-compose').classList.toggle('hidden', state.view === 'archive');
   }
@@ -770,10 +770,10 @@ var PatsChat = (function () {
 
   function promptCreateGroup() {
     PATS.openModal({
-      title: '建立新群組',
+      title: '建立群聊',
       lead: '成員可一次加多人：用逗號、中文逗號或換行分隔電子郵件／帳號。之後仍可再新增。',
       fields: [
-        { name: 'name', label: '群組名稱', placeholder: '例如：產品開發組' },
+        { name: 'name', label: '群聊名稱', placeholder: '例如：3人小組' },
         {
           name: 'members',
           label: '成員（選填，可多人）',
@@ -782,7 +782,7 @@ var PatsChat = (function () {
           placeholder: '例：\na@company.com\nb@company.com\n或：a@company.com, b@company.com'
         }
       ],
-      confirmText: '建立群組',
+      confirmText: '建立群聊',
       onSubmit: function (values) {
         var members = values.members
           ? values.members.split(/[,，\n\r]+/).map(function (s) { return s.trim(); }).filter(Boolean)
@@ -792,7 +792,7 @@ var PatsChat = (function () {
             if (result.missing.length) {
               PATS.toast('找不到這些成員：' + result.missing.join('、'), 'error');
             } else {
-              PATS.toast('群組已建立。', 'success');
+              PATS.toast('群聊已建立。', 'success');
             }
             // RPC 成功後立刻讓彈窗關閉；列表與開啟對話在背景進行
             var id = result.conversationId;
@@ -823,7 +823,7 @@ var PatsChat = (function () {
     $('#list-more').addEventListener('click', function (event) {
       PATS.openMenu(event.currentTarget, [
         { label: '邀請朋友', icon: 'person_add', onSelect: promptInviteContact },
-        { label: '建立新群組', icon: 'group_add', onSelect: promptCreateGroup },
+        { label: '建立群聊', icon: 'group_add', onSelect: promptCreateGroup },
         { label: '重新整理', icon: 'refresh', onSelect: function () { refreshList(); } }
       ]);
     });

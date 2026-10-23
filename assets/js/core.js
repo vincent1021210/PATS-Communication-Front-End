@@ -79,7 +79,7 @@ var PATS = (function () {
     NOT_A_MEMBER: '你不在這個對話中。',
     EMPTY_MESSAGE: '訊息不可以是空的。',
     MESSAGE_TOO_LONG: '訊息長度超過上限。',
-    GROUP_NAME_REQUIRED: '請輸入群組名稱。',
+    GROUP_NAME_REQUIRED: '請輸入群聊名稱。',
     GOOGLE_LOGIN_NOT_CONFIGURED: '後端尚未設定 Google 用戶端 ID，請聯絡管理員。',
     GOOGLE_TOKEN_MISSING: '沒有取得 Google 憑證，請重新嘗試。',
     GOOGLE_TOKEN_INVALID: 'Google 憑證驗證失敗，請重新嘗試。',

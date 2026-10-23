@@ -60,7 +60,7 @@ function assertMember_(userId, conversationId) {
 }
 
 function conversationTitle_(conv, participants, users, meId) {
-  if (conv.type === 'group') return conv.name || '未命名群組';
+  if (conv.type === 'group') return conv.name || '未命名群聊';
   var peer = participants.filter(function (p) { return p.userId !== meId; })[0];
   var peerUser = peer && users[peer.userId];
   return peerUser ? (peerUser.displayName || peerUser.username || peerUser.email) : '未知的聯絡人';
@@ -402,7 +402,7 @@ function apiCreateGroup_(user, payload) {
     id: newId_(),
     conversationId: conv.id,
     senderId: user.id,
-    body: (user.displayName || user.username) + ' 建立了群組「' + name + '」',
+    body: (user.displayName || user.username) + ' 建立了群聊「' + name + '」',
     kind: 'system',
     createdAt: nowIso_(),
     deleted: 'false'
