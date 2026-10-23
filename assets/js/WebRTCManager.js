@@ -146,9 +146,7 @@ var WebRTCManager = (function () {
       pc.onicecandidate = null;
       pc.ontrack = null;
       pc.oniceconnectionstatechange = null;
-      pc.getSenders().forEach(function (sender) {
-        if (sender.track) sender.track.stop();
-      });
+      // 麥克風由 AudioStreamManager 統一釋放；群組通話多條連線共用同一音軌，不可在此 stop
       pc.close();
     }
 

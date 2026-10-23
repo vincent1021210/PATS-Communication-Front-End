@@ -461,6 +461,12 @@ var PatsCall = (function () {
     });
     socket.on('hung-up', function (payload) {
       if (session && session.isGroup) {
+        // #region agent log
+        dbgCall_('C', 'call.js:hung-up', 'group hung-up received', {
+          from: payload && payload.from,
+          linksBefore: Object.keys(session.links || {})
+        }, 'mesh-leave');
+        // #endregion
         // 群組：只拆與離開者的連線；是否結束整通交由 group-peer-left（含 remaining）
         if (payload && payload.from) dropGroupPeer(payload.from, null);
         return;
@@ -634,6 +640,15 @@ var PatsCall = (function () {
   function dropGroupPeer(peerId, toastMsg) {
     if (!session || !session.isGroup || !peerId) return;
     var link = session.links[peerId];
+    // #region agent log
+    dbgCall_('C', 'call.js:dropGroupPeer', 'drop peer link', {
+      peerId: peerId,
+      hadPc: !!(link && link.pc),
+      linkPhase: link && link.phase,
+      linksBefore: Object.keys(session.links || {}),
+      linksAfterPreview: Object.keys(session.links || {}).filter(function (id) { return id !== peerId; })
+    }, 'mesh-leave');
+    // #endregion
     if (link && link.pc) {
       try { link.pc.close(); } catch (e) { /* ignore */ }
     }
@@ -646,17 +661,41 @@ var PatsCall = (function () {
 
   /** 與仍在房間內、尚未連線的成員補建 Mesh */
   function ensureGroupMesh(remaining) {
-    if (!session || !session.isGroup || !session.stream) return;
+    if (!session || !session.isGroup || !session.stream) {
+      // #region agent log
+      dbgCall_('B', 'call.js:ensureGroupMesh', 'skip remesh — no session/stream', {
+        hasSession: !!session,
+        isGroup: !!(session && session.isGroup),
+        hasStream: !!(session && session.stream),
+        remainingLen: (remaining || []).length
+      }, 'mesh-leave');
+      // #endregion
+      return;
+    }
     var me = currentUser && currentUser.id;
+    var actions = [];
     (remaining || []).forEach(function (peer) {
       var id = peer && (peer.id || peer);
       var name = peer && peer.name;
       if (!id || id === me) return;
-      if (session.links[id] && session.links[id].pc) return;
+      var existing = session.links[id];
+      var hasPc = !!(existing && existing.pc);
+      var willOffer = !(hasPc) && !(me && String(me) > String(id));
+      var skipReason = hasPc ? 'has-pc' : ((me && String(me) > String(id)) ? 'lexicographic-wait' : null);
+      actions.push({ id: id, hasPc: hasPc, phase: existing && existing.phase, willOffer: willOffer, skipReason: skipReason });
+      if (hasPc) return;
       // 用 userId 排序決定誰送 offer，避免雙方同時 offer 撞車
       if (me && String(me) > String(id)) return;
       offerToGroupPeer(id, name);
     });
+    // #region agent log
+    dbgCall_('A', 'call.js:ensureGroupMesh', 'remesh plan after leave', {
+      me: me || null,
+      remaining: (remaining || []).map(function (p) { return p && (p.id || p); }),
+      currentLinks: Object.keys(session.links || {}),
+      actions: actions
+    }, 'mesh-leave');
+    // #endregion
   }
 
   function endGroupIfAlone(remaining) {
@@ -666,6 +705,15 @@ var PatsCall = (function () {
       var id = peer && (peer.id || peer);
       return id && id !== me;
     });
+    // #region agent log
+    dbgCall_('D', 'call.js:endGroupIfAlone', 'alone check', {
+      me: me || null,
+      remainingRaw: remaining || null,
+      othersCount: others.length,
+      linkCount: groupLinkCount(),
+      willFinish: others.length === 0
+    }, 'mesh-leave');
+    // #endregion
     if (others.length === 0 && (session.wasActive || session.phase === 'active' || session.phase === 'connecting')) {
       finish('群組通話已結束（已無其他成員）');
     } else {
@@ -909,6 +957,14 @@ var PatsCall = (function () {
 
   function onGroupPeerLeft(payload) {
     if (!session || !session.isGroup || !sameCall(payload)) return;
+    // #region agent log
+    dbgCall_('D', 'call.js:onGroupPeerLeft', 'peer left event', {
+      from: payload && payload.from,
+      remaining: payload && payload.remaining,
+      linksBefore: Object.keys(session.links || {}),
+      callId: session.callId
+    }, 'mesh-leave');
+    // #endregion
     if (payload && payload.from) dropGroupPeer(payload.from, null);
     if (payload && payload.remaining) {
       setGroupRoomCount(payload.remaining.length);
@@ -941,6 +997,12 @@ var PatsCall = (function () {
           emit('ice-candidate', { to: peerId, candidate: candidate });
         },
         onTrack: function (remote) {
+          // #region agent log
+          dbgCall_('E', 'call.js:createGroupPc', 'onTrack remote audio', {
+            peerId: peerId,
+            trackCount: remote && remote.getTracks ? remote.getTracks().length : 0
+          }, 'mesh-leave');
+          // #endregion
           attachRemoteAudio(peerId, remote);
           link.phase = 'active';
           setGroupRoomCount(Math.max(groupParticipantCount(), groupLinkCount() + 1));
@@ -954,6 +1016,13 @@ var PatsCall = (function () {
         },
         onConnectionState: function (state) {
           if (!session || !session.links[peerId]) return;
+          // #region agent log
+          dbgCall_('E', 'call.js:createGroupPc', 'peer connection state', {
+            peerId: peerId,
+            state: state,
+            linkCount: groupLinkCount()
+          }, 'mesh-leave');
+          // #endregion
           // 單一連線失敗只移除該成員，不結束整通群組通話
           if (state === 'failed' || state === 'closed') {
             dropGroupPeer(peerId, null);
@@ -972,13 +1041,41 @@ var PatsCall = (function () {
   }
 
   function offerToGroupPeer(peerId, name) {
-    if (!session || !session.isGroup || !session.stream) return;
+    if (!session || !session.isGroup || !session.stream) {
+      // #region agent log
+      dbgCall_('B', 'call.js:offerToGroupPeer', 'cannot offer', {
+        peerId: peerId,
+        hasSession: !!session,
+        hasStream: !!(session && session.stream)
+      }, 'mesh-leave');
+      // #endregion
+      return;
+    }
+    // #region agent log
+    dbgCall_('B', 'call.js:offerToGroupPeer', 'creating offer to peer', {
+      peerId: peerId,
+      name: name || null
+    }, 'mesh-leave');
+    // #endregion
     createGroupPc(peerId, name).then(function (link) {
       if (!link || !link.pc || !session) return;
       return link.pc.createOffer().then(function (offer) {
         emit('call-user', { to: peerId, offer: offer, group: true, groupName: session.groupName });
+        // #region agent log
+        dbgCall_('B', 'call.js:offerToGroupPeer', 'offer emitted', {
+          peerId: peerId,
+          hasOffer: !!offer
+        }, 'mesh-leave');
+        // #endregion
       });
-    }).catch(function () { /* ignore */ });
+    }).catch(function (err) {
+      // #region agent log
+      dbgCall_('B', 'call.js:offerToGroupPeer', 'offer failed', {
+        peerId: peerId,
+        error: err && err.message ? err.message : String(err || 'unknown')
+      }, 'mesh-leave');
+      // #endregion
+    });
   }
 
   function answerGroupOffer(payload) {
@@ -1209,6 +1306,13 @@ var PatsCall = (function () {
   function hangup() {
     if (!session) return;
     if (session.isGroup) {
+      // #region agent log
+      dbgCall_('C', 'call.js:hangup', 'local leave group call', {
+        callId: session.callId,
+        peersNotified: Object.keys(session.links || {}),
+        linkCount: groupLinkCount()
+      }, 'mesh-leave');
+      // #endregion
       Object.keys(session.links || {}).forEach(function (peerId) {
         emit('hang-up', { to: peerId });
       });
