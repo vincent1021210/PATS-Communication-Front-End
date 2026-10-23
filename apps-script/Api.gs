@@ -156,7 +156,8 @@ function previewText_(message, users) {
   var name = sender ? (sender.displayName || sender.username) : '';
   var body = String(message.body || '');
   if (message.kind === 'system') return body;
-  if (message.kind === 'group-call') {
+  if (message.kind === 'group-call' || String(message.body || '').indexOf('GROUPCALL|') === 0 ||
+      /["']?callId["']?\s*[:=]/.test(String(message.body || ''))) {
     return name ? name + '：發起了群組通話' : '發起了群組通話';
   }
   return name ? name + '：' + body : body;
@@ -293,11 +294,16 @@ function apiSendMessage_(user, payload) {
   if (kind === 'group-call') {
     var meta = parseJson_(body, null);
     var callId = meta && String(meta.callId || '').trim();
+    // 相容舊格式 GROUPCALL|id|name
+    if (!callId && body.indexOf('GROUPCALL|') === 0) {
+      var bits = body.split('|');
+      callId = String(bits[1] || '').trim();
+      meta = { callId: callId, groupName: bits[2] || '群組通話' };
+    }
     if (!callId) throw new Error('INVALID_CALL_INVITE');
-    body = JSON.stringify({
-      callId: callId,
-      groupName: String((meta && meta.groupName) || '群組通話').trim() || '群組通話'
-    });
+    var gName = String((meta && meta.groupName) || '群組通話').trim() || '群組通話';
+    // 不用 JSON 當 body：試算表常弄壞引號，前端會顯示成亂碼
+    body = 'GROUPCALL|' + callId + '|' + encodeURIComponent(gName);
   }
 
   var message = withLock_(function () {

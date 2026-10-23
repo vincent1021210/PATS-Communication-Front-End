@@ -311,17 +311,58 @@ var PatsChat = (function () {
   }
 
   function parseGroupCallMeta(message) {
-    var raw = message && message.body != null ? String(message.body).trim() : '';
-    if (!raw || raw.charAt(0) !== '{') return null;
-    try {
-      var meta = JSON.parse(raw);
-      if (meta && meta.callId) {
+    if (!message) return null;
+    var body = message.body;
+
+    // 後端偶發把 JSON 解析成物件
+    if (body && typeof body === 'object') {
+      if (body.callId) {
         return {
-          callId: String(meta.callId),
-          groupName: String(meta.groupName || '群組通話')
+          callId: String(body.callId),
+          groupName: String(body.groupName || '群組通話')
         };
       }
-    } catch (e) { /* ignore */ }
+      return null;
+    }
+
+    var raw = String(body != null ? body : '').trim().replace(/^\uFEFF/, '');
+    if (!raw) return null;
+
+    // 新格式：GROUPCALL|callId|urlencodedName（試算表友善）
+    if (raw.indexOf('GROUPCALL|') === 0) {
+      var parts = raw.split('|');
+      if (parts[1]) {
+        var gName = parts.slice(2).join('|') || '群組通話';
+        try { gName = decodeURIComponent(gName); } catch (e0) { /* keep */ }
+        return { callId: String(parts[1]), groupName: gName || '群組通話' };
+      }
+    }
+
+    // 舊格式：完整 JSON
+    var start = raw.indexOf('{');
+    var end = raw.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      try {
+        var meta = JSON.parse(raw.slice(start, end + 1));
+        if (meta && meta.callId) {
+          return {
+            callId: String(meta.callId),
+            groupName: String(meta.groupName || '群組通話')
+          };
+        }
+      } catch (e1) { /* ignore */ }
+
+      // 試算表弄壞引號後：{callId:abc,groupName:xyz}
+      var idMatch = raw.match(/callId\s*[:=]\s*"?([A-Za-z0-9_-]+)"?/i);
+      if (idMatch) {
+        var nameMatch = raw.match(/groupName\s*[:=]\s*"?([^"{},]+)"?/i);
+        return {
+          callId: idMatch[1],
+          groupName: (nameMatch && nameMatch[1].trim()) || '群組通話'
+        };
+      }
+    }
+
     return null;
   }
 
@@ -369,17 +410,22 @@ var PatsChat = (function () {
 
   function postGroupCallInvite(conversationId, callId, groupName) {
     if (!conversationId || !callId) return;
+    var gName = groupName || '群組通話';
     var payload = {
       conversationId: conversationId,
       kind: 'group-call',
-      body: JSON.stringify({ callId: callId, groupName: groupName || '群組通話' })
+      body: JSON.stringify({ callId: callId, groupName: gName })
     };
     PATS.rpc('sendMessage', payload)
       .then(function (message) {
-        // 即使舊後端回傳 kind=text，前端仍強制當邀請卡渲染
         message.kind = 'group-call';
-        if (!message.body) message.body = payload.body;
+        // 若後端尚未更新，仍用可解析格式覆寫，避免畫面出現 JSON 亂碼
+        if (!parseGroupCallMeta(message)) {
+          message.body = 'GROUPCALL|' + callId + '|' + encodeURIComponent(gName);
+        }
         if (state.activeId === conversationId) {
+          // 先移除可能已輪詢進來的同 callId 文字氣泡
+          removeBrokenCallBubbles(callId);
           appendMessages([message], { optimistic: false });
           scrollToBottom();
         }
@@ -387,6 +433,19 @@ var PatsChat = (function () {
         return refreshList();
       })
       .catch(handleError);
+  }
+
+  function removeBrokenCallBubbles(callId) {
+    var body = $('#chat-body');
+    if (!body || !callId) return;
+    var nodes = body.querySelectorAll('.msg .bubble');
+    for (var i = 0; i < nodes.length; i++) {
+      var text = nodes[i].textContent || '';
+      if (text.indexOf(callId) >= 0 && text.indexOf('callId') >= 0) {
+        var msg = nodes[i].closest('.msg');
+        if (msg && msg.parentNode) msg.parentNode.removeChild(msg);
+      }
+    }
   }
 
   function messageNode(id) {
