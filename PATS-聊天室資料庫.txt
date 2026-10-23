@@ -14,7 +14,7 @@ Apps Script（後端 API）
   Script ID：
     1mgXQCyQntaj6phZ53a28zQsfLU0HPouHc-zlrtBCIFPUI_U8l4rgJx3u
   前端 apiUrl（config.js）：
-    https://script.google.com/macros/s/AKfycbzNkhCXzywXo6dxazgRCmB2JnEkLqV2XMVAlP0umwQpLZ6WrD6RcIYCqAjrj9sxFCW33Q/exec
+    https://script.google.com/macros/s/AKfycbysPndmhP7opBK7it0Lw-bjChZRfXmeVKjJcZGayf-Uo0Z_p-71SZ7Xc8G814IOeFy2ZA/exec
 
 指令碼屬性（應指向上方試算表）
   鍵名：PATS_SPREADSHEET_ID
