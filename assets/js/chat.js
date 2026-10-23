@@ -758,7 +758,11 @@ var PatsChat = (function () {
         return PATS.rpc('startDirect', { account: values.account })
           .then(function (result) {
             PATS.toast('對話已建立。', 'success');
-            return refreshList().then(function () { return openConversation(result.conversationId); });
+            // 不 await 列表重整，讓彈窗立刻關閉
+            var id = result.conversationId;
+            refreshList()
+              .then(function () { return openConversation(id); })
+              .catch(handleError);
           });
       }
     });
@@ -790,8 +794,12 @@ var PatsChat = (function () {
             } else {
               PATS.toast('群組已建立。', 'success');
             }
+            // RPC 成功後立刻讓彈窗關閉；列表與開啟對話在背景進行
+            var id = result.conversationId;
             PatsMain.setView('group');
-            return refreshList().then(function () { return openConversation(result.conversationId); });
+            refreshList()
+              .then(function () { return openConversation(id); })
+              .catch(handleError);
           });
       }
     });

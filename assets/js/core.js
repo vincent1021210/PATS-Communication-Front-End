@@ -309,8 +309,12 @@ var PATS = (function () {
       confirmBtn.disabled = true;
       Promise.resolve()
         .then(function () { return options.onSubmit(values); })
-        .then(closeModal)
+        .then(function () {
+          // 成功後立刻關閉；後續導頁／重整由 onSubmit 自行背景處理
+          closeModal();
+        })
         .catch(function (err) {
+          if (!$('#modal-root').contains(form)) return;
           errorBox.querySelector('span:last-child').textContent = err.message;
           errorBox.classList.remove('hidden');
           confirmBtn.disabled = false;
