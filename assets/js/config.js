@@ -55,22 +55,43 @@ var PATS_CONFIG = {
   signalingUrl: 'https://pats-communication-front-end.onrender.com',
 
   /**
-   * STUN／TURN。同網段通常只要 Google STUN。
-   * 跨網／4G 需要 TURN：call.js 會自動加上 Metered Open Relay
-   *（staticauth 動態憑證，或下方 API）。也可自行填入 Coturn：
-   *   { urls: 'stun:pats-call.duckdns.org:3478' },
-   *   { urls: 'turn:pats-call.duckdns.org:3478', username: 'pats', credential: '你的密碼' }
+   * STUN／TURN。
+   * 優先順序（call.js）：
+   *   1) 下方 iceServers 若含 turn:／turns: → 使用（目前為 Metered pats-call）
+   *   2) meteredTurnApiUrl
+   *   3) 公共 Metered Open Relay
+   *
+   * 自架 Coturn 時改成 turn:公網IP:3478（見 voip/coturn/部署說明.txt）。
    */
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
-    // { urls: 'turn:pats-call.duckdns.org:3478', username: 'pats', credential: 'please-change-this-password' }
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.relay.metered.ca:80' },
+    {
+      urls: 'turn:global.relay.metered.ca:80',
+      username: 'e797c160e865ea1242543c83',
+      credential: 'anSzhDYopXZ5XQ6z'
+    },
+    {
+      urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+      username: 'e797c160e865ea1242543c83',
+      credential: 'anSzhDYopXZ5XQ6z'
+    },
+    {
+      urls: 'turn:global.relay.metered.ca:443',
+      username: 'e797c160e865ea1242543c83',
+      credential: 'anSzhDYopXZ5XQ6z'
+    },
+    {
+      urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+      username: 'e797c160e865ea1242543c83',
+      credential: 'anSzhDYopXZ5XQ6z'
+    }
   ],
 
   /**
-   * （選填）Metered TURN 憑證 API 網址。
-   * 填入後 call.js 優先 fetch 回傳的 iceServers；留空則使用 Open Relay staticauth。
-   * 範例：'https://＜你的子網域＞.metered.live/api/v1/turn/credentials?apiKey=…'
+   * （選填）Metered TURN 憑證 API。下方已有 turn: 時會被略過。
+   * 例：'https://pats-call.metered.live/api/v1/turn/credentials?apiKey=…'
    */
   meteredTurnApiUrl: ''
 };

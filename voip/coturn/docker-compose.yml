@@ -1,0 +1,19 @@
+# PATS 獨立 Coturn（跨網／4G 語音中繼）
+# 需要：有公網 IP 的 Linux VPS（Oracle Always Free / 一般 VPS）
+# Render Free 不適合（UDP 媒體埠受限）
+#
+# 使用：
+#   1. cp .env.example .env 並填 PUBLIC_IP、TURN_USER、TURN_PASS
+#   2. ./gen-conf.sh   （或手動改 turnserver.conf）
+#   3. docker compose up -d
+#   4. 防火牆放行 TCP/UDP 3478、UDP 49152-65535
+#   5. 前端 config.js iceServers 加上 turn: 帳密
+
+services:
+  coturn:
+    image: coturn/coturn:latest
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]

@@ -142,7 +142,7 @@ var PatsCall = (function () {
     }
 
     var apiUrl = String((PATS.state.config && PATS.state.config.meteredTurnApiUrl) || '').trim();
-    var onlyConfigTurn = configuredTurnServers_();
+    var coturnServers = configuredTurnServers_();
 
     function finishResolve(servers, iceSource) {
       var list = servers && servers.length ? servers : googleStunServers_();
@@ -169,6 +169,13 @@ var PatsCall = (function () {
       return list;
     }
 
+    // 自架 Coturn（config.iceServers 內的 turn:）優先，不再混入公共 Open Relay
+    if (coturnServers.length) {
+      return Promise.resolve(
+        finishResolve(googleStunServers_().concat(coturnServers), 'coturn')
+      );
+    }
+
     var apiPromise = Promise.resolve(null);
     if (apiUrl) {
       apiPromise = fetch(apiUrl).then(function (res) {
@@ -177,10 +184,7 @@ var PatsCall = (function () {
       }).then(function (data) {
         var servers = (data && data.iceServers) || data;
         if (!Array.isArray(servers) || !servers.length) throw new Error('empty iceServers');
-        return finishResolve(
-          googleStunServers_().concat(servers, configuredTurnServers_()),
-          'metered-api'
-        );
+        return finishResolve(googleStunServers_().concat(servers), 'metered-api');
       }).catch(function () {
         return null;
       });
@@ -193,19 +197,13 @@ var PatsCall = (function () {
           return finishResolve(servers, 'staticauth');
         }).catch(function () {
           return finishResolve(
-            googleStunServers_().concat(legacyOpenRelayServers_(), configuredTurnServers_()),
+            googleStunServers_().concat(legacyOpenRelayServers_()),
             'legacy'
           );
         });
       }
-      if (onlyConfigTurn.length) {
-        return finishResolve(
-          googleStunServers_().concat(legacyOpenRelayServers_(), onlyConfigTurn),
-          'config'
-        );
-      }
       return finishResolve(
-        googleStunServers_().concat(legacyOpenRelayServers_(), configuredTurnServers_()),
+        googleStunServers_().concat(legacyOpenRelayServers_()),
         'legacy'
       );
     });
