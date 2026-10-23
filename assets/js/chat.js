@@ -869,25 +869,9 @@ var PatsChat = (function () {
         loadedScope = scope;
         var keptActive = findInboxRow_(state.activeId);
         inbox = list || [];
-        // #region agent log
-        fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'pre',hypothesisId:'B',location:'chat.js:refreshList',message:'inbox updated',data:{scope:scope,count:inbox.length,userIdTail:state.user&&state.user.id?String(state.user.id).slice(-6):''},timestamp:Date.now()})}).catch(function(){});
-        // #endregion
-        // #region agent log
-        if (scope === 'dm' && inbox.length === 0) {
-          return PATS.rpc('listConversations', { scope: 'archive' }).then(function (archived) {
-            fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'pre',hypothesisId:'D',location:'chat.js:archiveProbe',message:'archive count when dm empty',data:{archiveCount:Array.isArray(archived)?archived.length:-1},timestamp:Date.now()})}).catch(function(){});
-            return restoreActiveIfArchived_(options, keptActive);
-          }).catch(function () {
-            return restoreActiveIfArchived_(options, keptActive);
-          });
-        }
-        // #endregion
         return restoreActiveIfArchived_(options, keptActive);
       })
       .catch(function (err) {
-        // #region agent log
-        fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'pre',hypothesisId:'A',location:'chat.js:refreshList:catch',message:'refreshList failed',data:{scope:scope,code:err&&err.code,msg:err&&err.message},timestamp:Date.now()})}).catch(function(){});
-        // #endregion
         if (options && options.quiet) return;
         handleError(err);
       });

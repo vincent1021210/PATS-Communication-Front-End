@@ -117,13 +117,6 @@ var PATS = (function () {
     var url = state.config.apiUrl;
     if (!url) return Promise.reject(fail('NO_API_URL'));
 
-    // #region agent log
-    var _dbgWatch = action === 'session' || action === 'listConversations' || action === 'bootstrap';
-    if (_dbgWatch) {
-      fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'pre',hypothesisId:'E',location:'core.js:rpc:start',message:'rpc start',data:{action:action,apiTail:String(url||'').slice(-40),hasToken:!!state.token,scope:payload&&payload.scope},timestamp:Date.now()})}).catch(function(){});
-    }
-    // #endregion
-
     return fetch(url, {
       method: 'POST',
       mode: 'cors',
@@ -136,11 +129,6 @@ var PATS = (function () {
       })
     })
       .then(function (response) {
-        // #region agent log
-        if (_dbgWatch) {
-          fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'pre',hypothesisId:'A',location:'core.js:rpc:http',message:'rpc http',data:{action:action,status:response.status,ok:response.ok},timestamp:Date.now()})}).catch(function(){});
-        }
-        // #endregion
         if (!response.ok) throw fail('NETWORK');
         return response.text();
       })
@@ -149,44 +137,12 @@ var PATS = (function () {
         try {
           result = JSON.parse(text);
         } catch (err) {
-          // #region agent log
-          if (_dbgWatch) {
-            fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'pre',hypothesisId:'A',location:'core.js:rpc:badjson',message:'rpc bad json',data:{action:action,textHead:String(text||'').slice(0,80)},timestamp:Date.now()})}).catch(function(){});
-          }
-          // #endregion
           throw fail('BAD_RESPONSE');
         }
-        if (result && result.ok) {
-          // #region agent log
-          if (_dbgWatch) {
-            var data = result.data;
-            var info = { action: action, ok: true };
-            if (action === 'session') {
-              info.hasUser = !!(data && data.user);
-              info.userIdTail = data && data.user && data.user.id ? String(data.user.id).slice(-6) : '';
-            }
-            if (action === 'listConversations') {
-              info.count = Array.isArray(data) ? data.length : -1;
-              info.scope = payload && payload.scope;
-            }
-            fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'pre',hypothesisId:'B',location:'core.js:rpc:ok',message:'rpc ok',data:info,timestamp:Date.now()})}).catch(function(){});
-          }
-          // #endregion
-          return result.data;
-        }
-        // #region agent log
-        if (_dbgWatch) {
-          fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'pre',hypothesisId:'A',location:'core.js:rpc:err',message:'rpc api error',data:{action:action,error:result&&result.error},timestamp:Date.now()})}).catch(function(){});
-        }
-        // #endregion
+        if (result && result.ok) return result.data;
         throw fail((result && result.error) || 'UNKNOWN_ERROR');
       })
       .catch(function (err) {
-        // #region agent log
-        if (_dbgWatch) {
-          fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'pre',hypothesisId:'A',location:'core.js:rpc:catch',message:'rpc catch',data:{action:action,code:err&&err.code,msg:err&&err.message},timestamp:Date.now()})}).catch(function(){});
-        }
-        // #endregion
         if (err && err.code) throw err;
         throw fail('NETWORK');
       });
