@@ -966,7 +966,8 @@ var PatsCall = (function () {
     }).catch(function () { /* ignore */ });
   }
 
-  function dialGroup(peers, groupName) {
+  function dialGroup(peers, groupName, options) {
+    options = options || {};
     if (!window.isSecureContext) {
       PATS.toast(dialHint(), 'error');
       return;
@@ -1029,18 +1030,94 @@ var PatsCall = (function () {
           finish('無法發起群組通話');
           return;
         }
-        if (!ack.rung || !ack.rung.length) {
-          finish('沒有成員在線上，無法群組通話');
-          return;
-        }
+        // 即使暫時無人在線，仍建立房間並送出聊天邀請按鈕，供稍後加入
         if (ack.offline && ack.offline.length) {
-          PATS.toast('部分成員未在線，已向在線成員撥打。');
+          PATS.toast(ack.rung && ack.rung.length
+            ? '部分成員未在線，已向在線成員撥打。'
+            : '成員目前未在線；已在群組送出「進入群組通話」邀請。');
         }
         updateGroupStatus();
+        if (typeof options.onStarted === 'function') {
+          try { options.onStarted(callId, session.groupName); } catch (e) { /* ignore */ }
+        }
       });
     }).catch(function (err) {
       if (!alive(token)) return;
       finish(err && err.message ? err.message : '無法開始通話（請允許麥克風）');
+    });
+  }
+
+  /** 從聊天室邀請按鈕加入進行中的群組通話 */
+  function joinGroupCall(callId, groupName) {
+    callId = String(callId || '').trim();
+    if (!callId) {
+      PATS.toast('無效的群組通話邀請。', 'error');
+      return;
+    }
+    if (!window.isSecureContext) {
+      PATS.toast(dialHint() || '此環境無法使用麥克風。', 'error');
+      return;
+    }
+    var hint = dialHint();
+    if (hint) {
+      PATS.toast(hint, 'error');
+      return;
+    }
+    if (session) {
+      if (session.isGroup && session.callId === callId) {
+        PATS.toast('你已在此群組通話中。');
+        showLayer();
+        return;
+      }
+      PATS.toast('已經有一通通話進行中。', 'error');
+      return;
+    }
+
+    generation += 1;
+    session = {
+      token: generation,
+      callId: callId,
+      peerId: '',
+      isCaller: false,
+      isGroup: true,
+      groupName: groupName || '群組通話',
+      phase: 'connecting',
+      pc: null,
+      stream: null,
+      offer: null,
+      links: {},
+      retried: false,
+      restartTimer: null,
+      networkLostTimer: null,
+      wasActive: false,
+      earlyIce: [],
+      resolvedIce: null,
+      iceSource: null
+    };
+    var token = generation;
+    paintPeer(session.groupName);
+    setStatus('正在加入群組通話…');
+    setActions('connecting');
+    showLayer();
+
+    openMedia(token).then(function () {
+      if (!alive(token)) return;
+      socket.emit('group-call-accept', { callId: callId }, function (ack) {
+        if (!alive(token)) return;
+        if (!ack || !ack.ok) {
+          finish(ack && ack.error === 'no-room'
+            ? '此群組通話已結束'
+            : '無法加入群組通話');
+          return;
+        }
+        if (ack.groupName) session.groupName = ack.groupName;
+        paintPeer(session.groupName || '群組通話');
+        updateGroupStatus();
+        // 既有成員會向我們送 offer
+      });
+    }).catch(function (err) {
+      if (!alive(token)) return;
+      finish(err && err.message ? err.message : '無法加入（請允許麥克風）');
     });
   }
 
@@ -1428,6 +1505,7 @@ var PatsCall = (function () {
     disconnect: disconnect,
     dial: dial,
     dialGroup: dialGroup,
+    joinGroupCall: joinGroupCall,
     signalingUrl: signalingUrl,
     setSignalingUrl: setSignalingUrl,
     signalState: function () { return signalState; },

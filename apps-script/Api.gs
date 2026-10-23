@@ -60,7 +60,7 @@ function assertMember_(userId, conversationId) {
 }
 
 function conversationTitle_(conv, participants, users, meId) {
-  if (conv.type === 'group') return conv.name || '未命名群聊';
+  if (conv.type === 'group') return conv.name || '未命名群組';
   var peer = participants.filter(function (p) { return p.userId !== meId; })[0];
   var peerUser = peer && users[peer.userId];
   return peerUser ? (peerUser.displayName || peerUser.username || peerUser.email) : '未知的聯絡人';
@@ -156,6 +156,9 @@ function previewText_(message, users) {
   var name = sender ? (sender.displayName || sender.username) : '';
   var body = String(message.body || '');
   if (message.kind === 'system') return body;
+  if (message.kind === 'group-call') {
+    return name ? name + '：發起了群組通話' : '發起了群組通話';
+  }
   return name ? name + '：' + body : body;
 }
 
@@ -285,13 +288,25 @@ function apiSendMessage_(user, payload) {
   if (!body) throw new Error('EMPTY_MESSAGE');
   if (body.length > 4000) throw new Error('MESSAGE_TOO_LONG');
 
+  var kind = String(payload.kind || 'text');
+  if (kind !== 'text' && kind !== 'group-call') kind = 'text';
+  if (kind === 'group-call') {
+    var meta = parseJson_(body, null);
+    var callId = meta && String(meta.callId || '').trim();
+    if (!callId) throw new Error('INVALID_CALL_INVITE');
+    body = JSON.stringify({
+      callId: callId,
+      groupName: String((meta && meta.groupName) || '群組通話').trim() || '群組通話'
+    });
+  }
+
   var message = withLock_(function () {
     var created = dbInsert_('messages', {
       id: newId_(),
       conversationId: conversationId,
       senderId: user.id,
       body: body,
-      kind: 'text',
+      kind: kind,
       createdAt: nowIso_(),
       deleted: 'false'
     });
@@ -304,7 +319,7 @@ function apiSendMessage_(user, payload) {
   return {
     id: message.id,
     body: message.body,
-    kind: 'text',
+    kind: message.kind || kind,
     createdAt: message.createdAt,
     mine: true,
     senderId: user.id,
@@ -402,7 +417,7 @@ function apiCreateGroup_(user, payload) {
     id: newId_(),
     conversationId: conv.id,
     senderId: user.id,
-    body: (user.displayName || user.username) + ' 建立了群聊「' + name + '」',
+    body: (user.displayName || user.username) + ' 建立了群組「' + name + '」',
     kind: 'system',
     createdAt: nowIso_(),
     deleted: 'false'

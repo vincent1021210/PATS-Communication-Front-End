@@ -185,7 +185,13 @@ var PatsChat = (function () {
         PATS.toast('請強制重新整理以載入群組通話功能。', 'error');
         return;
       }
-      PatsCall.dialGroup(members, (full && full.title) || '群組通話');
+      var title = (full && full.title) || '群組通話';
+      var conversationId = full && full.id;
+      PatsCall.dialGroup(members, title, {
+        onStarted: function (callId, groupName) {
+          postGroupCallInvite(conversationId, callId, groupName || title);
+        }
+      });
     }
 
     if (conv.members && conv.members.length) {
@@ -272,6 +278,12 @@ var PatsChat = (function () {
         return;
       }
 
+      if (message.kind === 'group-call') {
+        container.appendChild(renderGroupCallInvite(message));
+        previousSender = '';
+        return;
+      }
+
       var isTail = previousSender === message.senderId;
       previousSender = message.senderId;
 
@@ -295,6 +307,69 @@ var PatsChat = (function () {
 
     thread.day = lastDay;
     thread.sender = previousSender;
+  }
+
+  function parseGroupCallMeta(message) {
+    try {
+      var meta = JSON.parse(message && message.body ? message.body : '');
+      if (meta && meta.callId) return meta;
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  function renderGroupCallInvite(message) {
+    var meta = parseGroupCallMeta(message) || {};
+    var callId = meta.callId || '';
+    var groupName = meta.groupName || '群組通話';
+    var who = message.mine
+      ? '你發起了群組通話'
+      : ((message.senderName || '成員') + ' 發起了群組通話');
+
+    return el('div', {
+      class: 'msg-call-invite',
+      'data-id': message.id,
+      'data-call-id': callId
+    }, [
+      el('div', { class: 'msg-call-card' }, [
+        el('div', { class: 'msg-call-icon' }, [icon('call')]),
+        el('div', { class: 'msg-call-body' }, [
+          el('div', { class: 'msg-call-title', text: who }),
+          el('div', { class: 'msg-call-sub', text: groupName }),
+          el('button', {
+            class: 'btn btn-primary msg-call-join',
+            type: 'button',
+            text: '進入群組通話',
+            onclick: function () {
+              if (!window.PatsCall || !PatsCall.joinGroupCall) {
+                PATS.toast('請強制重新整理以載入群組通話功能。', 'error');
+                return;
+              }
+              PatsCall.joinGroupCall(callId, groupName);
+            }
+          })
+        ]),
+        el('div', { class: 'msg-call-time', text: PATS.formatTime(message.createdAt) })
+      ])
+    ]);
+  }
+
+  function postGroupCallInvite(conversationId, callId, groupName) {
+    if (!conversationId || !callId) return;
+    var payload = {
+      conversationId: conversationId,
+      kind: 'group-call',
+      body: JSON.stringify({ callId: callId, groupName: groupName || '群組通話' })
+    };
+    PATS.rpc('sendMessage', payload)
+      .then(function (message) {
+        if (state.activeId === conversationId) {
+          appendMessages([message], { optimistic: false });
+          scrollToBottom();
+        }
+        touchInboxPreview(conversationId, '發起了群組通話', message.createdAt || new Date().toISOString());
+        return refreshList();
+      })
+      .catch(handleError);
   }
 
   function messageNode(id) {
