@@ -54,6 +54,20 @@ function json_(value) {
 function publicActions_() {
   return {
     ping: function () { return { app: APP_NAME, time: nowIso_() }; },
+    /** 不需登入：確認目前綁哪份試算表、對話／訊息列數（排查切後端） */
+    dbHint: function () {
+      var ss = openSpreadsheet_();
+      var id = ss.getId();
+      var conv = ss.getSheetByName('conversations');
+      var msg = ss.getSheetByName('messages');
+      var users = ss.getSheetByName('users');
+      return {
+        spreadsheetId: id,
+        conversations: conv ? Math.max(0, conv.getLastRow() - 1) : -1,
+        messages: msg ? Math.max(0, msg.getLastRow() - 1) : -1,
+        users: users ? Math.max(0, users.getLastRow() - 1) : -1
+      };
+    },
     config: function () {
       return {
         googleClientId: googleClientId_(),

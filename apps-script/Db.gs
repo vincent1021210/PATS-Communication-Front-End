@@ -80,9 +80,17 @@ function openSpreadsheet_() {
   return SS_CACHE;
 }
 
+/** 曾誤綁、幾乎空白的試算表；讀到時自動改綁正式有資料的表 */
+var EMPTY_CHAT_SPREADSHEET_ID = '1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0';
+
 function createOrOpenSpreadsheet_() {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty(DB_PROP_KEY) || DEFAULT_CHAT_SPREADSHEET_ID;
+  // 空表誤綁時改回真資料（傳圖切後端時用）
+  if (id === EMPTY_CHAT_SPREADSHEET_ID) {
+    id = DEFAULT_CHAT_SPREADSHEET_ID;
+    props.setProperty(DB_PROP_KEY, id);
+  }
   if (id) {
     try {
       var existing = SpreadsheetApp.openById(id);
