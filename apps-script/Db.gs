@@ -9,7 +9,7 @@ var DB_PROP_KEY = 'PATS_SPREADSHEET_ID';
 var DB_LOCK_TIMEOUT_MS = 20000;
 
 /** 正式「聊天室」試算表（未設指令碼屬性時使用，避免誤建空白資料庫）。 */
-var DEFAULT_CHAT_SPREADSHEET_ID = '1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0';
+var DEFAULT_CHAT_SPREADSHEET_ID = '1cHhqvKvKqCor-6u_gN4f9GHcZGQYK5tIMtQLr_qFgQw';
 
 /**
  * 資料表結構。欄位順序即工作表的欄位順序，變更後請執行 setup() 補齊。

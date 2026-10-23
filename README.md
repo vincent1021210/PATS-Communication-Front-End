@@ -47,7 +47,7 @@ apps-script/              ← 部署成 Apps Script 網頁應用程式（API）
 
 | 項目 | 連結 |
 | --- | --- |
-| 試算表 | [PATS 聊天室資料庫](https://docs.google.com/spreadsheets/d/1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0/edit?gid=0#gid=0) |
+| 試算表 | [PATS 聊天室資料庫](https://docs.google.com/spreadsheets/d/1cHhqvKvKqCor-6u_gN4f9GHcZGQYK5tIMtQLr_qFgQw/edit?gid=0#gid=0) |
 | Apps Script | [專案編輯器](https://script.google.com/u/0/home/projects/1mgXQCyQntaj6phZ53a28zQsfLU0HPouHc-zlrtBCIFPUI_U8l4rgJx3u/edit) |
 
 在該 Script 編輯器執行 `bindChatRoomDatabase()` 可把 `PATS_SPREADSHEET_ID` 指到上述試算表。

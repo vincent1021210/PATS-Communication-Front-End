@@ -44,7 +44,7 @@ function initializeProject() {
  * 綁定正式「聊天室」試算表到本專案（寫入 PATS_SPREADSHEET_ID）。
  *
  * 試算表：
- *   https://docs.google.com/spreadsheets/d/1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0/edit
+ *   https://docs.google.com/spreadsheets/d/1cHhqvKvKqCor-6u_gN4f9GHcZGQYK5tIMtQLr_qFgQw/edit
  * 本 Script 專案：
  *   https://script.google.com/u/0/home/projects/1mgXQCyQntaj6phZ53a28zQsfLU0HPouHc-zlrtBCIFPUI_U8l4rgJx3u/edit
  *

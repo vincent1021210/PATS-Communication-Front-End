@@ -4,9 +4,9 @@ PATS「聊天室」資料庫（正式環境）
 試算表（Google Sheets）
   名稱／用途：PATS 聊天室資料庫
   網址：
-    https://docs.google.com/spreadsheets/d/1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0/edit?gid=0#gid=0
+    https://docs.google.com/spreadsheets/d/1cHhqvKvKqCor-6u_gN4f9GHcZGQYK5tIMtQLr_qFgQw/edit?gid=0#gid=0
   Spreadsheet ID：
-    1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0
+    1cHhqvKvKqCor-6u_gN4f9GHcZGQYK5tIMtQLr_qFgQw
 
 Apps Script（後端 API）
   專案編輯器：
@@ -18,7 +18,7 @@ Apps Script（後端 API）
 
 指令碼屬性（應指向上方試算表）
   鍵名：PATS_SPREADSHEET_ID
-  值：  1yuhSJSPUcOJOs_L7oyDf4Q9z73eR3C9XF5jClle9WX0
+  值：  1cHhqvKvKqCor-6u_gN4f9GHcZGQYK5tIMtQLr_qFgQw
   在編輯器執行：bindChatRoomDatabase()（見 apps-script/Setup.gs）
 
 資料表（工作表）
