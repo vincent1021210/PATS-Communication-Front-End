@@ -99,7 +99,9 @@ function relay(socket, event, payload, ack) {
     candidate: payload.candidate,
     group: !!(payload && payload.group),
     groupName: (payload && payload.groupName) || '',
-    media: payload && payload.media === 'video' ? 'video' : 'audio'
+    media: payload && payload.media === 'video' ? 'video' : 'audio',
+    video: payload && typeof payload.video === 'boolean' ? payload.video : undefined,
+    reason: (payload && payload.reason) || ''
   });
   if (ack) ack({ ok: true });
 }
@@ -182,6 +184,11 @@ io.on('connection', function (socket) {
 
   socket.on('request-restart', function (payload, ack) {
     relay(socket, 'request-restart', payload || {}, ack);
+  });
+
+  /** 視訊中鏡頭開關／切到背景，通知對方改顯示大頭貼 */
+  socket.on('media-state', function (payload, ack) {
+    relay(socket, 'media-state', payload || {}, ack);
   });
 
   /** 發起群組通話：建立房間並向其他成員響鈴（尚無 SDP） */

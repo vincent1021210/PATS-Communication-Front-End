@@ -69,6 +69,26 @@ var AudioStreamManager = (function () {
     });
   }
 
+  /** 切換鏡頭用：只開一條影像音軌；指定鏡頭失敗時改用任一可用鏡頭 */
+  function getVideoTrack(opts) {
+    var facing = (opts && opts.facingMode) || 'user';
+    var base = videoConstraints(opts);
+    var exact = Object.assign({}, base, { facingMode: { exact: facing } });
+    return navigator.mediaDevices.getUserMedia({ audio: false, video: exact })
+      .catch(function () {
+        return navigator.mediaDevices.getUserMedia({ audio: false, video: base });
+      })
+      .then(function (s) { return s.getVideoTracks()[0]; });
+  }
+
+  /** 是否有兩顆以上鏡頭（取得權限後 enumerateDevices 才準確） */
+  function hasMultipleCameras() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve(false);
+    return navigator.mediaDevices.enumerateDevices().then(function (list) {
+      return list.filter(function (d) { return d.kind === 'videoinput'; }).length > 1;
+    }).catch(function () { return false; });
+  }
+
   function hasVideo(stream) {
     return !!(stream && stream.getVideoTracks().some(function (t) { return t.readyState === 'live'; }));
   }
@@ -87,6 +107,8 @@ var AudioStreamManager = (function () {
 
   return {
     getStream: getStream,
+    getVideoTrack: getVideoTrack,
+    hasMultipleCameras: hasMultipleCameras,
     hasVideo: hasVideo,
     setMuted: setMuted,
     stop: stop

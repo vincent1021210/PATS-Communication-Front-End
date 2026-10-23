@@ -195,6 +195,7 @@ var PatsCall = (function () {
   function setStatus(text) { $('call-status').textContent = text; }
 
   function setActions(mode) {
+    if (session) session.actionMode = mode;
     var videoRinging = mode === 'ringing' && !!(session && session.media === 'video');
     var accept = $('call-accept');
     accept.classList.toggle('hidden', mode !== 'ringing');
@@ -204,8 +205,27 @@ var PatsCall = (function () {
     if (acceptAudio) acceptAudio.classList.toggle('hidden', !videoRinging);
     $('call-reject').classList.toggle('hidden', mode !== 'ringing');
     $('call-hangup').classList.toggle('hidden', mode === 'ringing' || mode === 'idle');
-    $('call-mute').classList.toggle('hidden', mode !== 'active' && mode !== 'dialing' && mode !== 'connecting');
+    var inCall = mode === 'active' || mode === 'dialing' || mode === 'connecting';
+    $('call-mute').classList.toggle('hidden', !inCall);
+    var canVideo = inCall && !!(session && !session.isGroup && session.media === 'video' && session.sendVideo);
+    var cam = $('call-camera');
+    if (cam) cam.classList.toggle('hidden', !canVideo);
+    var flip = $('call-flip');
+    if (flip) flip.classList.toggle('hidden', !canVideo || !(session && session.canFlip));
     $('call-layer').classList.toggle('is-preview', mode !== 'active');
+  }
+
+  function setCameraIcon() {
+    var cam = $('call-camera');
+    if (!cam) return;
+    var on = !!(session && session.camOn);
+    cam.querySelector('.material-symbols-outlined').textContent = on ? 'videocam' : 'videocam_off';
+    cam.setAttribute('aria-label', on ? '關閉鏡頭' : '開啟鏡頭');
+    cam.classList.toggle('is-off', !on);
+  }
+
+  function currentActionMode() {
+    return (session && session.actionMode) || 'idle';
   }
 
   /* ---------------------------------------------------------- 視訊畫面 */
@@ -218,9 +238,19 @@ var PatsCall = (function () {
     var local = $('call-local-video');
     if (!local) return;
     var has = AudioStreamManager.hasVideo(stream);
-    local.classList.toggle('hidden', !has);
-    local.srcObject = has ? stream : null;
-    if (has) local.play().catch(function () {});
+    var show = has && !!(session && session.camOn);
+    local.classList.toggle('hidden', !show);
+    local.classList.toggle('is-back', !!(session && session.facing === 'environment'));
+    if (local.srcObject !== (has ? stream : null)) local.srcObject = has ? stream : null;
+    if (show) local.play().catch(function () {});
+  }
+
+  function setRemoteNote(text) {
+    var note = $('call-remote-note');
+    $('call-layer').classList.toggle('remote-cam-off', !!text);
+    if (!note) return;
+    note.textContent = text || '';
+    note.classList.toggle('hidden', !text);
   }
 
   function playRemoteVideo() {
@@ -254,7 +284,75 @@ var PatsCall = (function () {
     if (local) local.classList.add('hidden');
     var remote = $('call-remote-video');
     if (remote) remote.classList.remove('is-contain');
+    setRemoteNote('');
     $('call-layer').classList.remove('is-video', 'has-remote-video', 'needs-tap', 'is-preview');
+  }
+
+  /* ---------------------------------------------------------- 鏡頭控制 */
+
+  function sendMediaState(extra) {
+    if (!session || session.isGroup || session.media !== 'video' || !session.sendVideo) return;
+    if (session.phase === 'ringing' || !session.stream) return;
+    emit('media-state', Object.assign({ video: !!session.camOn }, extra || {}));
+  }
+
+  function toggleCamera() {
+    if (!session || !session.stream || !session.sendVideo) return;
+    session.camOn = !session.camOn;
+    session.stream.getVideoTracks().forEach(function (t) { t.enabled = session.camOn; });
+    setCameraIcon();
+    showLocalVideo(session.stream);
+    sendMediaState();
+  }
+
+  function flipCamera() {
+    if (!session || !session.stream || !session.sendVideo || session.flipping) return;
+    var token = session.token;
+    var stream = session.stream;
+    var old = stream.getVideoTracks()[0];
+    var from = session.facing || 'user';
+    var next = from === 'environment' ? 'user' : 'environment';
+    session.flipping = true;
+    // iOS 必須先停掉舊鏡頭才能開新的
+    if (old) old.stop();
+
+    function useTrack(track, facing) {
+      if (!alive(token)) {
+        track.stop();
+        return;
+      }
+      track.enabled = !!session.camOn;
+      if (old) stream.removeTrack(old);
+      stream.addTrack(track);
+      session.facing = facing;
+      if (session.pc) session.pc.replaceVideoTrack(track).catch(function () {});
+      var local = $('call-local-video');
+      if (local) local.srcObject = null;
+      showLocalVideo(stream);
+    }
+
+    AudioStreamManager.getVideoTrack({ facingMode: next }).then(function (track) {
+      useTrack(track, next);
+    }).catch(function () {
+      PATS.toast('無法切換鏡頭。', 'error');
+      return AudioStreamManager.getVideoTrack({ facingMode: from }).then(function (track) {
+        useTrack(track, from);
+      });
+    }).catch(function () {
+      if (alive(token)) PATS.toast('鏡頭無法使用。', 'error');
+    }).then(function () {
+      if (alive(token)) session.flipping = false;
+    });
+  }
+
+  function onMediaState(payload) {
+    if (!sameCall(payload) || !session || session.isGroup || typeof payload.video !== 'boolean') return;
+    if (payload.video) {
+      setRemoteNote('');
+      playRemoteVideo();
+      return;
+    }
+    setRemoteNote(payload.reason === 'background' ? '對方已暫停視訊' : '對方已關閉鏡頭');
   }
 
   function onStageClick() {
@@ -324,7 +422,12 @@ var PatsCall = (function () {
     if (bindLifecycle._done) return;
     bindLifecycle._done = true;
     document.addEventListener('visibilitychange', function () {
-      if (document.hidden) return;
+      // 手機切到背景時瀏覽器會暫停鏡頭，先通知對方，避免畫面卡在最後一格
+      if (document.hidden) {
+        sendMediaState({ video: false, reason: 'background' });
+        return;
+      }
+      sendMediaState();
       ensureSignalPresence();
     });
     window.addEventListener('pageshow', function () { ensureSignalPresence(); });
@@ -453,6 +556,7 @@ var PatsCall = (function () {
       session.pc.addIceCandidate(payload.candidate);
     });
     socket.on('renegotiate', onRenegotiate);
+    socket.on('media-state', onMediaState);
     socket.on('renegotiate-answer', function (payload) {
       if (!sameCall(payload) || !session) return;
       if (session.isGroup) {
@@ -1274,6 +1378,14 @@ var PatsCall = (function () {
         }
       }
       if (session.media === 'video') showLocalVideo(stream);
+      if (session.sendVideo) {
+        setCameraIcon();
+        AudioStreamManager.hasMultipleCameras().then(function (multi) {
+          if (!alive(token)) return;
+          session.canFlip = multi;
+          setActions(currentActionMode());
+        });
+      }
       return resolveIceServers().then(function (servers) {
         if (!alive(token)) {
           AudioStreamManager.stop(stream);
@@ -1322,6 +1434,10 @@ var PatsCall = (function () {
       isCaller: isCaller,
       media: video ? 'video' : 'audio',
       sendVideo: video,
+      camOn: true,
+      facing: 'user',
+      canFlip: false,
+      flipping: false,
       phase: isCaller ? 'dialing' : 'ringing',
       pc: null,
       stream: null,
@@ -1386,6 +1502,10 @@ var PatsCall = (function () {
     if (acceptAudio) acceptAudio.addEventListener('click', function () { accept({ audioOnly: true }); });
     var stage = $('call-stage');
     if (stage) stage.addEventListener('click', onStageClick);
+    var cam = $('call-camera');
+    if (cam) cam.addEventListener('click', toggleCamera);
+    var flip = $('call-flip');
+    if (flip) flip.addEventListener('click', flipCamera);
     $('call-reject').addEventListener('click', reject);
     $('call-hangup').addEventListener('click', hangup);
     $('call-mute').addEventListener('click', toggleMute);

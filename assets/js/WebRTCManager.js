@@ -91,6 +91,16 @@ var WebRTCManager = (function () {
       return Promise.all(jobs);
     }
 
+    /** 切換鏡頭：直接替換送出的影像，不需重新協商 */
+    function replaceVideoTrack(track) {
+      if (closed) return Promise.resolve();
+      var sender = pc.getSenders().filter(function (s) {
+        return s.track && s.track.kind === 'video';
+      })[0];
+      if (!sender) return Promise.resolve();
+      return sender.replaceTrack(track);
+    }
+
     /** 網路路徑失效時重開 ICE。只有原本的發話端可以送出新的 offer。 */
     function restartIce() {
       return createOffer({ iceRestart: true });
@@ -112,6 +122,7 @@ var WebRTCManager = (function () {
       acceptAnswer: acceptAnswer,
       addIceCandidate: addIceCandidate,
       capVideoBitrate: capVideoBitrate,
+      replaceVideoTrack: replaceVideoTrack,
       restartIce: restartIce,
       close: close
     };

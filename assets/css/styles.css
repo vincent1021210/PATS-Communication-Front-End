@@ -997,7 +997,19 @@ select.email-domain {
 .call-layer.is-video .call-actions { pointer-events: auto; }
 .call-layer.is-video .call-head h2,
 .call-layer.is-video .call-head p { text-shadow: 0 1px 4px rgba(0,0,0,.6); }
-.call-layer.is-video.has-remote-video .call-head .avatar { display: none; }
+.call-layer.is-video.has-remote-video:not(.remote-cam-off) .call-head .avatar { display: none; }
+.call-layer.remote-cam-off .call-remote-video { visibility: hidden; }
+.call-local-video.is-back { transform: none; }
+.call-remote-note {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 8px 16px;
+  border-radius: var(--r-full);
+  background: rgba(255,255,255,.14);
+  color: #fff; font-size: 14px;
+  white-space: nowrap;
+}
+.call-layer.is-video .call-round.is-off:not(.is-danger):not(.is-ok) { background: #fff; color: #111827; }
 .call-layer.is-video .call-actions { margin-top: 0; }
 .call-layer.is-video .call-round:not(.is-danger):not(.is-ok) {
   background: rgba(255,255,255,.2);
