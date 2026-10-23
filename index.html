@@ -12,9 +12,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=archive,arrow_back,badge,call,call_end,chat,chat_bubble,chevron_right,child_care,delete_sweep,edit_square,error,forum,group_add,groups,history,history_edu,inbox,key,lock,lock_reset,login,logout,mail,manage_accounts,mark_email_read,mic,mic_off,mop,more_horiz,more_vert,person,person_add,pin,refresh,report,save,school,search,send,settings,shield,storage,supervisor_account,unarchive,visibility,visibility_off&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=archive,arrow_back,badge,call,call_end,chat,chat_bubble,chevron_right,child_care,delete_sweep,edit_square,error,forum,group_add,groups,history,history_edu,inbox,key,lock,lock_reset,login,logout,mail,manage_accounts,mark_email_read,mic,mic_off,mop,more_horiz,more_vert,person,person_add,pin,refresh,report,save,school,search,send,settings,shield,storage,supervisor_account,unarchive,videocam,videocam_off,visibility,visibility_off&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/styles.css?v=20261023h">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20261023v">
 </head>
 
 <body>
@@ -421,16 +421,26 @@
   </div>
 
   <div id="call-layer" class="call-layer hidden" role="dialog" aria-modal="true" aria-labelledby="call-name">
+    <div id="call-stage" class="call-stage">
+      <video id="call-remote-video" class="call-remote-video" autoplay playsinline></video>
+      <video id="call-local-video" class="call-local-video hidden" autoplay playsinline muted></video>
+      <div class="call-tap-hint">點一下畫面開始播放</div>
+    </div>
     <div class="call-card">
-      <div class="avatar avatar-lg" id="call-avatar" aria-hidden="true">P</div>
-      <h2 id="call-name">對方</h2>
-      <p id="call-status">撥號中</p>
+      <div class="call-head">
+        <div class="avatar avatar-lg" id="call-avatar" aria-hidden="true">P</div>
+        <h2 id="call-name">對方</h2>
+        <p id="call-status">撥號中</p>
+      </div>
       <div class="call-actions">
         <button id="call-mute" class="call-round" type="button" aria-label="靜音麥克風">
           <span class="material-symbols-outlined">mic</span>
         </button>
         <button id="call-reject" class="call-round is-danger hidden" type="button" aria-label="拒絕">
           <span class="material-symbols-outlined">call_end</span>
+        </button>
+        <button id="call-accept-audio" class="call-round is-ok-soft hidden" type="button" aria-label="語音接聽" title="語音接聽">
+          <span class="material-symbols-outlined">call</span>
         </button>
         <button id="call-accept" class="call-round is-ok hidden" type="button" aria-label="接聽">
           <span class="material-symbols-outlined">call</span>
@@ -452,11 +462,11 @@
   <script src="assets/js/config.js?v=20261022v"></script>
   <script src="assets/js/core.js?v=20261023a"></script>
   <script src="assets/js/auth.js?v=20261022r"></script>
-  <script src="assets/js/AudioStreamManager.js?v=20261022t"></script>
-  <script src="assets/js/WebRTCManager.js?v=20261023j"></script>
+  <script src="assets/js/AudioStreamManager.js?v=20261023v"></script>
+  <script src="assets/js/WebRTCManager.js?v=20261023v"></script>
   <script src="assets/js/call-tones.js?v=20261022x"></script>
-  <script src="assets/js/call.js?v=20261023j"></script>
-  <script src="assets/js/chat.js?v=20261023h"></script>
+  <script src="assets/js/call.js?v=20261023v"></script>
+  <script src="assets/js/chat.js?v=20261023v"></script>
   <script src="assets/js/settings.js?v=20261022z"></script>
   <script src="assets/js/main.js?v=20261022y"></script>
 </body>

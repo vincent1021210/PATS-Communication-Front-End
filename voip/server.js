@@ -98,7 +98,8 @@ function relay(socket, event, payload, ack) {
     answer: payload.answer,
     candidate: payload.candidate,
     group: !!(payload && payload.group),
-    groupName: (payload && payload.groupName) || ''
+    groupName: (payload && payload.groupName) || '',
+    media: payload && payload.media === 'video' ? 'video' : 'audio'
   });
   if (ack) ack({ ok: true });
 }

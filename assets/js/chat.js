@@ -152,7 +152,7 @@ var PatsChat = (function () {
     return null;
   }
 
-  function startCall(conv) {
+  function startCall(conv, options) {
     if (!window.PatsCall) {
       PATS.toast('通話模組尚未載入，請強制重新整理頁面。', 'error');
       return;
@@ -166,7 +166,7 @@ var PatsChat = (function () {
       PATS.toast('找不到通話對象。請先開啟對話再撥打。', 'error');
       return;
     }
-    PatsCall.dial(peer);
+    PatsCall.dial(peer, options);
   }
 
   function startGroupCall(conv) {
@@ -230,6 +230,12 @@ var PatsChat = (function () {
         el('div', { class: 'sub', text: subtitle })
       ]),
       el('div', { class: 'actions' }, [
+        conv.type === 'group' ? null : el('button', {
+          class: 'icon-btn call-btn', type: 'button',
+          title: '視訊通話',
+          'aria-label': '視訊通話',
+          onclick: function () { startCall(conv, { video: true }); }
+        }, [icon('videocam')]),
         el('button', {
           class: 'icon-btn call-btn', type: 'button',
           title: conv.type === 'group' ? '群組通話' : '語音通話',
@@ -907,6 +913,13 @@ var PatsChat = (function () {
       icon: 'call',
       onSelect: function () { startCall(conv); }
     });
+    if (conv.type !== 'group') {
+      items.push({
+        label: '視訊通話',
+        icon: 'videocam',
+        onSelect: function () { startCall(conv, { video: true }); }
+      });
+    }
     items.push(
       {
         label: archived ? '移回主要訊息' : '封存這個對話',

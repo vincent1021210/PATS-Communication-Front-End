@@ -19,38 +19,6 @@ var PatsCall = (function () {
 
   function $(id) { return document.getElementById(id); }
 
-  // #region agent log
-  function dbgCall_(hypothesisId, location, message, data, runId) {
-    var entry = {
-      sessionId: 'b641af',
-      runId: runId || 'pre-fix',
-      hypothesisId: hypothesisId,
-      location: location,
-      message: message,
-      data: data || {},
-      timestamp: Date.now()
-    };
-    try { console.debug('[PATS-dbg]', hypothesisId, location, message, entry.data); } catch (e) { /* ignore */ }
-    try {
-      var key = 'pats.debug.b641af';
-      var buf = JSON.parse(window.localStorage.getItem(key) || '[]');
-      if (!Array.isArray(buf)) buf = [];
-      buf.push(entry);
-      if (buf.length > 80) buf = buf.slice(-80);
-      window.localStorage.setItem(key, JSON.stringify(buf));
-    } catch (e2) { /* ignore */ }
-    var payload = JSON.stringify(entry);
-    var opts = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'b641af' },
-      body: payload
-    };
-    [
-      'http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',
-      'http://192.168.1.136:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795'
-    ].forEach(function (url) { fetch(url, opts).catch(function () {}); });
-  }
-  // #endregion
 
   function googleStunServers_() {
     return [
@@ -73,27 +41,6 @@ var PatsCall = (function () {
       { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
       { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
     ];
-  }
-
-  function urlKinds_(servers) {
-    var kinds = { stun: 0, turn: 0, turns: 0 };
-    (servers || []).forEach(function (s) {
-      var list = Array.isArray(s.urls) ? s.urls : [s.urls];
-      list.forEach(function (u) {
-        u = String(u || '').toLowerCase();
-        if (u.indexOf('turns:') === 0) kinds.turns += 1;
-        else if (u.indexOf('turn:') === 0) kinds.turn += 1;
-        else if (u.indexOf('stun:') === 0) kinds.stun += 1;
-      });
-    });
-    return kinds;
-  }
-
-  function hasTurnUrl_(servers) {
-    return (servers || []).some(function (s) {
-      var u = typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
-      return /turns?:/i.test(u);
-    });
   }
 
   function hmacSha1Base64_(secret, message) {
@@ -150,22 +97,6 @@ var PatsCall = (function () {
         session.resolvedIce = list;
         session.iceSource = iceSource;
       }
-      var kinds = urlKinds_(list);
-      var hasTurn = hasTurnUrl_(list);
-      // #region agent log
-      dbgCall_('F', 'call.js:resolveIceServers', 'ice servers resolved', {
-        hasTurn: hasTurn,
-        urlKinds: kinds,
-        iceSource: iceSource,
-        iceServerCount: list.length
-      }, 'post-fix');
-      if (!hasTurn) {
-        dbgCall_('G', 'call.js:resolveIceServers', 'no turn urls after resolve', {
-          iceSource: iceSource,
-          urlKinds: kinds
-        }, 'post-fix');
-      }
-      // #endregion
       return list;
     }
 
@@ -264,10 +195,75 @@ var PatsCall = (function () {
   function setStatus(text) { $('call-status').textContent = text; }
 
   function setActions(mode) {
-    $('call-accept').classList.toggle('hidden', mode !== 'ringing');
+    var videoRinging = mode === 'ringing' && !!(session && session.media === 'video');
+    var accept = $('call-accept');
+    accept.classList.toggle('hidden', mode !== 'ringing');
+    accept.querySelector('.material-symbols-outlined').textContent = videoRinging ? 'videocam' : 'call';
+    accept.setAttribute('aria-label', videoRinging ? '視訊接聽' : '接聽');
+    var acceptAudio = $('call-accept-audio');
+    if (acceptAudio) acceptAudio.classList.toggle('hidden', !videoRinging);
     $('call-reject').classList.toggle('hidden', mode !== 'ringing');
     $('call-hangup').classList.toggle('hidden', mode === 'ringing' || mode === 'idle');
     $('call-mute').classList.toggle('hidden', mode !== 'active' && mode !== 'dialing' && mode !== 'connecting');
+    $('call-layer').classList.toggle('is-preview', mode !== 'active');
+  }
+
+  /* ---------------------------------------------------------- 視訊畫面 */
+
+  function setVideoMode(on) {
+    $('call-layer').classList.toggle('is-video', !!on);
+  }
+
+  function showLocalVideo(stream) {
+    var local = $('call-local-video');
+    if (!local) return;
+    var has = AudioStreamManager.hasVideo(stream);
+    local.classList.toggle('hidden', !has);
+    local.srcObject = has ? stream : null;
+    if (has) local.play().catch(function () {});
+  }
+
+  function playRemoteVideo() {
+    var remote = $('call-remote-video');
+    if (!remote || !remote.srcObject) return;
+    remote.play().then(function () {
+      $('call-layer').classList.remove('needs-tap');
+    }).catch(function () {
+      // iOS 等瀏覽器擋自動播放時，請使用者點一下畫面
+      $('call-layer').classList.add('needs-tap');
+    });
+  }
+
+  function attachRemoteVideo(stream, track) {
+    var remote = $('call-remote-video');
+    if (!remote) return;
+    if (remote.srcObject !== stream) remote.srcObject = stream;
+    var hasVideo = stream.getVideoTracks().length > 0 || !!(track && track.kind === 'video');
+    $('call-layer').classList.toggle('has-remote-video', hasVideo);
+    playRemoteVideo();
+  }
+
+  function clearVideos() {
+    ['call-remote-video', 'call-local-video'].forEach(function (id) {
+      var v = $(id);
+      if (!v) return;
+      v.pause();
+      v.srcObject = null;
+    });
+    var local = $('call-local-video');
+    if (local) local.classList.add('hidden');
+    var remote = $('call-remote-video');
+    if (remote) remote.classList.remove('is-contain');
+    $('call-layer').classList.remove('is-video', 'has-remote-video', 'needs-tap', 'is-preview');
+  }
+
+  function onStageClick() {
+    if ($('call-layer').classList.contains('needs-tap')) {
+      playRemoteVideo();
+      return;
+    }
+    var remote = $('call-remote-video');
+    if (remote && remote.srcObject) remote.classList.toggle('is-contain');
   }
 
   function paintPeer(name) {
@@ -328,21 +324,7 @@ var PatsCall = (function () {
     if (bindLifecycle._done) return;
     bindLifecycle._done = true;
     document.addEventListener('visibilitychange', function () {
-      // #region agent log
-      dbgCall_('A', 'call.js:visibilitychange', document.hidden ? 'page hidden' : 'page visible', {
-        hidden: !!document.hidden,
-        signalState: signalState,
-        socketConnected: !!(socket && socket.connected),
-        hasSession: !!session
-      });
-      // #endregion
       if (document.hidden) return;
-      // #region agent log
-      dbgCall_('J', 'call.js:visibility', 'page visible — re-register', {
-        signalState: signalState,
-        socketConnected: !!(socket && socket.connected)
-      });
-      // #endregion
       ensureSignalPresence();
     });
     window.addEventListener('pageshow', function () { ensureSignalPresence(); });
@@ -353,28 +335,9 @@ var PatsCall = (function () {
     if (!socket || !currentUser) return;
     var displayName = currentUser.displayName || currentUser.username ||
       currentUser.email || currentUser.id;
-    // #region agent log
-    dbgCall_('B', 'call.js:registerSelf', 'register emit', {
-      userId: currentUser.id,
-      hasDisplayName: !!displayName,
-      nameEqualsId: String(displayName || '') === String(currentUser.id || ''),
-      nameLen: String(displayName || '').length,
-      socketConnected: !!(socket && socket.connected),
-      signalState: signalState,
-      pageHidden: !!document.hidden
-    });
-    // #endregion
     socket.emit('register', {
       userId: currentUser.id,
       name: displayName
-    }, function (ack) {
-      // #region agent log
-      dbgCall_('B', 'call.js:registerSelf', 'register ack', {
-        userId: currentUser && currentUser.id,
-        ackOk: !!(ack && ack.ok),
-        online: ack && ack.online
-      });
-      // #endregion
     });
   }
 
@@ -416,24 +379,9 @@ var PatsCall = (function () {
 
     socket.on('connect', function () {
       setSignalState('online');
-      // #region agent log
-      dbgCall_('A', 'call.js:socket', 'socket connected', {
-        pageHidden: !!document.hidden,
-        userId: currentUser && currentUser.id
-      });
-      // #endregion
       registerSelf();
     });
     socket.on('disconnect', function (reason) {
-      // #region agent log
-      dbgCall_('A', 'call.js:socket', 'socket disconnect', {
-        reason: reason || null,
-        pageHidden: !!document.hidden,
-        hasSession: !!session,
-        phase: session && session.phase,
-        userId: currentUser && currentUser.id
-      });
-      // #endregion
       setSignalState('offline');
       scheduleReconnect();
       // 己方網路斷線且通話中：關閉通話層回到聊天
@@ -461,12 +409,6 @@ var PatsCall = (function () {
     });
     socket.on('hung-up', function (payload) {
       if (session && session.isGroup) {
-        // #region agent log
-        dbgCall_('C', 'call.js:hung-up', 'group hung-up received', {
-          from: payload && payload.from,
-          linksBefore: Object.keys(session.links || {})
-        }, 'mesh-leave');
-        // #endregion
         // 群組：只拆與離開者的連線；是否結束整通交由 group-peer-left（含 remaining）
         if (payload && payload.from) dropGroupPeer(payload.from, null);
         return;
@@ -554,7 +496,8 @@ var PatsCall = (function () {
       to: to,
       callId: session.callId,
       group: !!session.isGroup,
-      groupName: session.groupName || ''
+      groupName: session.groupName || '',
+      media: session.media || 'audio'
     }, extra || {}));
   }
 
@@ -640,15 +583,6 @@ var PatsCall = (function () {
   function dropGroupPeer(peerId, toastMsg) {
     if (!session || !session.isGroup || !peerId) return;
     var link = session.links[peerId];
-    // #region agent log
-    dbgCall_('C', 'call.js:dropGroupPeer', 'drop peer link', {
-      peerId: peerId,
-      hadPc: !!(link && link.pc),
-      linkPhase: link && link.phase,
-      linksBefore: Object.keys(session.links || {}),
-      linksAfterPreview: Object.keys(session.links || {}).filter(function (id) { return id !== peerId; })
-    }, 'mesh-leave');
-    // #endregion
     if (link && link.pc) {
       try { link.pc.close(); } catch (e) { /* ignore */ }
     }
@@ -661,41 +595,17 @@ var PatsCall = (function () {
 
   /** 與仍在房間內、尚未連線的成員補建 Mesh */
   function ensureGroupMesh(remaining) {
-    if (!session || !session.isGroup || !session.stream) {
-      // #region agent log
-      dbgCall_('B', 'call.js:ensureGroupMesh', 'skip remesh — no session/stream', {
-        hasSession: !!session,
-        isGroup: !!(session && session.isGroup),
-        hasStream: !!(session && session.stream),
-        remainingLen: (remaining || []).length
-      }, 'mesh-leave');
-      // #endregion
-      return;
-    }
+    if (!session || !session.isGroup || !session.stream) return;
     var me = currentUser && currentUser.id;
-    var actions = [];
     (remaining || []).forEach(function (peer) {
       var id = peer && (peer.id || peer);
       var name = peer && peer.name;
       if (!id || id === me) return;
-      var existing = session.links[id];
-      var hasPc = !!(existing && existing.pc);
-      var willOffer = !(hasPc) && !(me && String(me) > String(id));
-      var skipReason = hasPc ? 'has-pc' : ((me && String(me) > String(id)) ? 'lexicographic-wait' : null);
-      actions.push({ id: id, hasPc: hasPc, phase: existing && existing.phase, willOffer: willOffer, skipReason: skipReason });
-      if (hasPc) return;
+      if (session.links[id] && session.links[id].pc) return;
       // 用 userId 排序決定誰送 offer，避免雙方同時 offer 撞車
       if (me && String(me) > String(id)) return;
       offerToGroupPeer(id, name);
     });
-    // #region agent log
-    dbgCall_('A', 'call.js:ensureGroupMesh', 'remesh plan after leave', {
-      me: me || null,
-      remaining: (remaining || []).map(function (p) { return p && (p.id || p); }),
-      currentLinks: Object.keys(session.links || {}),
-      actions: actions
-    }, 'mesh-leave');
-    // #endregion
   }
 
   function endGroupIfAlone(remaining) {
@@ -705,15 +615,6 @@ var PatsCall = (function () {
       var id = peer && (peer.id || peer);
       return id && id !== me;
     });
-    // #region agent log
-    dbgCall_('D', 'call.js:endGroupIfAlone', 'alone check', {
-      me: me || null,
-      remainingRaw: remaining || null,
-      othersCount: others.length,
-      linkCount: groupLinkCount(),
-      willFinish: others.length === 0
-    }, 'mesh-leave');
-    // #endregion
     if (others.length === 0 && (session.wasActive || session.phase === 'active' || session.phase === 'connecting')) {
       finish('群組通話已結束（已無其他成員）');
     } else {
@@ -741,25 +642,12 @@ var PatsCall = (function () {
   function displayCallName(name, userId) {
     var label = String(name || '').trim();
     var id = String(userId || '').trim();
-    var source = 'payload';
-    if (label && label !== id) {
-      // #region agent log
-      dbgCall_('C', 'call.js:displayCallName', 'resolved name', {
-        source: source, usedIdFallback: false, hasId: !!id
-      });
-      // #endregion
-      return label;
-    }
+    if (label && label !== id) return label;
     try {
       var titleEl = document.querySelector('#chat-pane .chat-head .title');
       if (titleEl) {
         var t = String(titleEl.textContent || '').trim();
         if (t) {
-          // #region agent log
-          dbgCall_('C', 'call.js:displayCallName', 'resolved name', {
-            source: 'chat-head', usedIdFallback: false, hasId: !!id
-          });
-          // #endregion
           return t;
         }
       }
@@ -776,34 +664,18 @@ var PatsCall = (function () {
         }
       }
       if (matched) {
-        // #region agent log
-        dbgCall_('C', 'call.js:displayCallName', 'resolved name', {
-          source: 'conv-peer', usedIdFallback: false, hasId: !!id
-        });
-        // #endregion
         return matched;
       }
       if (anyDm) {
-        // #region agent log
-        dbgCall_('C', 'call.js:displayCallName', 'resolved name', {
-          source: 'any-dm', usedIdFallback: false, hasId: !!id
-        });
-        // #endregion
         return anyDm;
       }
     } catch (e) { /* ignore */ }
-    // #region agent log
-    dbgCall_('C', 'call.js:displayCallName', 'resolved name', {
-      source: 'fallback-對方', usedIdFallback: true, hasId: !!id,
-      rawWasId: !!(label && label === id)
-    });
-    // #endregion
     return '對方';
   }
 
   /* ------------------------------------------------------------- 通話 */
 
-  function dial(peer) {
+  function dial(peer, options) {
     if (!peer || !peer.id) {
       PATS.toast('找不到這位聯絡人。', 'error');
       return;
@@ -820,44 +692,22 @@ var PatsCall = (function () {
       return;
     }
 
-    // #region agent log
-    dbgCall_('D', 'call.js:dial', 'check-peer before', {
-      peerId: peer.id,
-      peerName: peer.name || null,
-      myId: currentUser && currentUser.id,
-      signalState: signalState,
-      socketConnected: !!(socket && socket.connected),
-      pageHidden: !!document.hidden,
-      signalingHost: (function () {
-        try { return new URL(signalingUrl()).host; } catch (e) { return 'bad'; }
-      })()
-    });
-    // #endregion
     socket.emit('check-peer', { userId: peer.id }, function (res) {
-      // #region agent log
-      dbgCall_('D', 'call.js:dial', 'check-peer result', {
-        peerId: peer.id,
-        myId: currentUser && currentUser.id,
-        resOk: !!(res && res.ok),
-        resOnline: !!(res && res.online),
-        resRaw: res ? { ok: res.ok, online: res.online, error: res.error || null } : null,
-        signalState: signalState,
-        pageHidden: !!document.hidden
-      });
-      // #endregion
       if (!res || !res.ok || !res.online) {
         PATS.toast('對方通話未就緒。請對方打開 PATS、畫面保持在前景，並確認顯示「通話就緒」後再撥。', 'error');
         return;
       }
-      startDial(peer);
+      startDial(peer, options);
     });
   }
 
-  function startDial(peer) {
-    var token = begin(peer, true);
+  function startDial(peer, options) {
+    var video = !!(options && options.video);
+    var token = begin(peer, true, video ? 'video' : 'audio');
     paintPeer(displayCallName(peer.name, peer.id));
-    setStatus('撥號中…');
+    setStatus(video ? '視訊撥號中…' : '撥號中…');
     setActions('dialing');
+    setVideoMode(video);
     showLayer();
     if (window.CallTones) CallTones.startDialing();
 
@@ -866,6 +716,7 @@ var PatsCall = (function () {
       return session.pc.createOffer();
     }).then(function (offer) {
       if (!offer || !alive(token)) return;
+      applyVideoBitrate();
       emit('call-user', { offer: offer });
     }).catch(function (err) {
       if (!alive(token)) return;
@@ -886,21 +737,13 @@ var PatsCall = (function () {
       socket.emit('reject-call', { to: payload.from, callId: payload.callId, reason: 'busy' });
       return;
     }
-    // #region agent log
-    dbgCall_('E', 'call.js:onIncoming', 'incoming call', {
-      from: payload.from || null,
-      fromName: payload.fromName || null,
-      callId: payload.callId || null,
-      pageHidden: !!document.hidden,
-      signalState: signalState
-    });
-    // #endregion
     var incomingName = displayCallName(payload.fromName, payload.from);
-    begin({ id: payload.from, name: incomingName }, false);
+    var incomingMedia = payload.media === 'video' ? 'video' : 'audio';
+    begin({ id: payload.from, name: incomingName }, false, incomingMedia);
     session.callId = payload.callId;
     session.offer = payload.offer;
     paintPeer(incomingName);
-    setStatus('來電…');
+    setStatus(incomingMedia === 'video' ? '視訊來電…' : '來電…');
     setActions('ringing');
     showLayer();
     if (window.CallTones) CallTones.startRinging();
@@ -957,14 +800,6 @@ var PatsCall = (function () {
 
   function onGroupPeerLeft(payload) {
     if (!session || !session.isGroup || !sameCall(payload)) return;
-    // #region agent log
-    dbgCall_('D', 'call.js:onGroupPeerLeft', 'peer left event', {
-      from: payload && payload.from,
-      remaining: payload && payload.remaining,
-      linksBefore: Object.keys(session.links || {}),
-      callId: session.callId
-    }, 'mesh-leave');
-    // #endregion
     if (payload && payload.from) dropGroupPeer(payload.from, null);
     if (payload && payload.remaining) {
       setGroupRoomCount(payload.remaining.length);
@@ -997,12 +832,6 @@ var PatsCall = (function () {
           emit('ice-candidate', { to: peerId, candidate: candidate });
         },
         onTrack: function (remote) {
-          // #region agent log
-          dbgCall_('E', 'call.js:createGroupPc', 'onTrack remote audio', {
-            peerId: peerId,
-            trackCount: remote && remote.getTracks ? remote.getTracks().length : 0
-          }, 'mesh-leave');
-          // #endregion
           attachRemoteAudio(peerId, remote);
           link.phase = 'active';
           setGroupRoomCount(Math.max(groupParticipantCount(), groupLinkCount() + 1));
@@ -1016,13 +845,6 @@ var PatsCall = (function () {
         },
         onConnectionState: function (state) {
           if (!session || !session.links[peerId]) return;
-          // #region agent log
-          dbgCall_('E', 'call.js:createGroupPc', 'peer connection state', {
-            peerId: peerId,
-            state: state,
-            linkCount: groupLinkCount()
-          }, 'mesh-leave');
-          // #endregion
           // 單一連線失敗只移除該成員，不結束整通群組通話
           if (state === 'failed' || state === 'closed') {
             dropGroupPeer(peerId, null);
@@ -1041,41 +863,13 @@ var PatsCall = (function () {
   }
 
   function offerToGroupPeer(peerId, name) {
-    if (!session || !session.isGroup || !session.stream) {
-      // #region agent log
-      dbgCall_('B', 'call.js:offerToGroupPeer', 'cannot offer', {
-        peerId: peerId,
-        hasSession: !!session,
-        hasStream: !!(session && session.stream)
-      }, 'mesh-leave');
-      // #endregion
-      return;
-    }
-    // #region agent log
-    dbgCall_('B', 'call.js:offerToGroupPeer', 'creating offer to peer', {
-      peerId: peerId,
-      name: name || null
-    }, 'mesh-leave');
-    // #endregion
+    if (!session || !session.isGroup || !session.stream) return;
     createGroupPc(peerId, name).then(function (link) {
       if (!link || !link.pc || !session) return;
       return link.pc.createOffer().then(function (offer) {
         emit('call-user', { to: peerId, offer: offer, group: true, groupName: session.groupName });
-        // #region agent log
-        dbgCall_('B', 'call.js:offerToGroupPeer', 'offer emitted', {
-          peerId: peerId,
-          hasOffer: !!offer
-        }, 'mesh-leave');
-        // #endregion
       });
-    }).catch(function (err) {
-      // #region agent log
-      dbgCall_('B', 'call.js:offerToGroupPeer', 'offer failed', {
-        peerId: peerId,
-        error: err && err.message ? err.message : String(err || 'unknown')
-      }, 'mesh-leave');
-      // #endregion
-    });
+    }).catch(function () { /* ignore */ });
   }
 
   function answerGroupOffer(payload) {
@@ -1246,9 +1040,14 @@ var PatsCall = (function () {
     });
   }
 
-  function accept() {
+  function accept(options) {
     if (!session || session.phase !== 'ringing') return;
     var token = generation;
+    if (!session.isGroup && session.media === 'video') {
+      // 語音接聽：只送聲音，但仍接收並顯示對方畫面
+      session.sendVideo = !(options && options.audioOnly);
+      setVideoMode(true);
+    }
     if (window.CallTones) CallTones.stop();
     setStatus('接通中…');
     setActions('connecting');
@@ -1282,6 +1081,9 @@ var PatsCall = (function () {
       if (!alive(token)) return null;
       return session.pc.acceptOffer(offer);
     }).then(function (answer) {
+      if (answer && alive(token)) applyVideoBitrate();
+      return answer;
+    }).then(function (answer) {
       if (!answer || !alive(token)) return;
       session.phase = 'connecting';
       emit('accept-call', { answer: answer });
@@ -1306,13 +1108,6 @@ var PatsCall = (function () {
   function hangup() {
     if (!session) return;
     if (session.isGroup) {
-      // #region agent log
-      dbgCall_('C', 'call.js:hangup', 'local leave group call', {
-        callId: session.callId,
-        peersNotified: Object.keys(session.links || {}),
-        linkCount: groupLinkCount()
-      }, 'mesh-leave');
-      // #endregion
       Object.keys(session.links || {}).forEach(function (peerId) {
         emit('hang-up', { to: peerId });
       });
@@ -1334,16 +1129,6 @@ var PatsCall = (function () {
   }
 
   function onAccepted(payload) {
-    // #region agent log
-    dbgCall_('E', 'call.js:onAccepted', 'call-accepted received', {
-      sameCall: sameCall(payload),
-      hasSession: !!session,
-      hasPc: !!(session && session.pc),
-      phase: session && session.phase,
-      callId: payload && payload.callId,
-      isGroup: !!(session && session.isGroup)
-    });
-    // #endregion
     if (!sameCall(payload) || !session) return;
     if (session.isGroup) {
       var link = payload.from && session.links[payload.from];
@@ -1397,10 +1182,17 @@ var PatsCall = (function () {
     }, 8000);
   }
 
+  /** 一對一視訊：約 800 kbps、24fps，兼顧手機畫質與 TURN 流量 */
+  function applyVideoBitrate() {
+    if (!session || session.isGroup || !session.pc || !session.sendVideo) return;
+    session.pc.capVideoBitrate(800000, 24);
+  }
+
   function markActive() {
     if (!session || session.phase === 'active') return;
     session.phase = 'active';
     session.wasActive = true;
+    applyVideoBitrate();
     clearNetworkLostWatch();
     setActions('active');
     startTimer();
@@ -1410,15 +1202,6 @@ var PatsCall = (function () {
 
   function onConnectionState(state) {
     if (!session) return;
-    // #region agent log
-    dbgCall_('B', 'call.js:onConnectionState', 'call connection state', {
-      state: state,
-      isCaller: !!(session && session.isCaller),
-      retried: !!(session && session.retried),
-      phase: session && session.phase,
-      wasActive: !!(session && session.wasActive)
-    });
-    // #endregion
     if (state === 'connected' || state === 'completed') {
       markActive();
       return;
@@ -1451,17 +1234,6 @@ var PatsCall = (function () {
   function restart() {
     if (!session || !session.pc) return;
     var ice = iceServers();
-    // #region agent log
-    dbgCall_('E', 'call.js:restart', 'ice restart path', {
-      alreadyRetried: !!session.retried,
-      isCaller: !!session.isCaller,
-      iceServerCount: (ice || []).length,
-      hasTurn: hasTurnUrl_(ice),
-      urlKinds: urlKinds_(ice),
-      iceSource: session.iceSource || null,
-      wasActive: !!session.wasActive
-    }, session.retried ? 'post-fix' : 'pre-fix');
-    // #endregion
     if (session.retried) {
       finish(
         session.wasActive
@@ -1484,30 +1256,29 @@ var PatsCall = (function () {
   }
 
   function openMedia(token) {
-    return AudioStreamManager.getStream().then(function (stream) {
+    var wantVideo = !!(session && !session.isGroup && session.sendVideo);
+    return AudioStreamManager.getStream({ video: wantVideo }).then(function (stream) {
       if (!alive(token)) {
         AudioStreamManager.stop(stream);
         return;
       }
       session.stream = stream;
+      if (wantVideo && stream.videoFallback) {
+        session.sendVideo = false;
+        PATS.toast(stream.videoFallback);
+        // 撥號端沒有畫面時整通改為語音；接聽端仍可看對方畫面
+        if (session.isCaller) {
+          session.media = 'audio';
+          setVideoMode(false);
+          setStatus('撥號中…');
+        }
+      }
+      if (session.media === 'video') showLocalVideo(stream);
       return resolveIceServers().then(function (servers) {
         if (!alive(token)) {
           AudioStreamManager.stop(stream);
           return;
         }
-        // #region agent log
-        dbgCall_('A', 'call.js:openMedia', 'openMedia ice config', {
-          isCaller: !!(session && session.isCaller),
-          isGroup: !!(session && session.isGroup),
-          iceUrls: (servers || []).map(function (s) {
-            return typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
-          }),
-          hasTurn: hasTurnUrl_(servers),
-          urlKinds: urlKinds_(servers),
-          pageHost: location.host,
-          pageProto: location.protocol
-        }, 'post-fix');
-        // #endregion
         // 群組通話：只準備麥克風與 ICE，PeerConnection 按成員分別建立
         if (session.isGroup) {
           muted = false;
@@ -1517,15 +1288,13 @@ var PatsCall = (function () {
         session.pc = WebRTCManager.create({
           iceServers: servers,
           onIceCandidate: function (candidate) {
-            // #region agent log
-            dbgCall_('D', 'call.js:onIceCandidate', 'emit ice-candidate', {
-              hasSocket: !!socket,
-              signalState: signalState
-            });
-            // #endregion
             emit('ice-candidate', { candidate: candidate });
           },
-          onTrack: function (remote) {
+          onTrack: function (remote, track) {
+            if (session && session.media === 'video') {
+              attachRemoteVideo(remote, track);
+              return;
+            }
             var audio = $('call-remote');
             audio.srcObject = remote;
             audio.play().catch(function () {});
@@ -1543,13 +1312,16 @@ var PatsCall = (function () {
     });
   }
 
-  function begin(peer, isCaller) {
+  function begin(peer, isCaller, media) {
     generation += 1;
+    var video = media === 'video';
     session = {
       token: generation,
       callId: isCaller ? newId() : '',
       peerId: peer.id,
       isCaller: isCaller,
+      media: video ? 'video' : 'audio',
+      sendVideo: video,
       phase: isCaller ? 'dialing' : 'ringing',
       pc: null,
       stream: null,
@@ -1570,19 +1342,6 @@ var PatsCall = (function () {
   }
 
   function finish(message) {
-    // #region agent log
-    dbgCall_('E', 'call.js:finish', 'call finish', {
-      message: message || null,
-      wasCaller: !!(session && session.isCaller),
-      phase: session && session.phase,
-      wasActive: !!(session && session.wasActive),
-      callId: session && session.callId,
-      peerId: session && session.peerId,
-      pageHidden: !!document.hidden,
-      socketConnected: !!(socket && socket.connected),
-      signalState: signalState
-    });
-    // #endregion
     var hadSession = !!session;
     var wasGroup = !!(session && session.isGroup);
     var groupCallId = session && session.callId;
@@ -1608,6 +1367,7 @@ var PatsCall = (function () {
     session = null;
     muted = false;
     clearRemoteAudios();
+    clearVideos();
     hideLayer();
     if (hadSession && window.CallTones) CallTones.playEnded();
     if (message) {
@@ -1621,7 +1381,11 @@ var PatsCall = (function () {
   }
 
   function bind() {
-    $('call-accept').addEventListener('click', accept);
+    $('call-accept').addEventListener('click', function () { accept(); });
+    var acceptAudio = $('call-accept-audio');
+    if (acceptAudio) acceptAudio.addEventListener('click', function () { accept({ audioOnly: true }); });
+    var stage = $('call-stage');
+    if (stage) stage.addEventListener('click', onStageClick);
     $('call-reject').addEventListener('click', reject);
     $('call-hangup').addEventListener('click', hangup);
     $('call-mute').addEventListener('click', toggleMute);

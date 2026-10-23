@@ -12,80 +12,20 @@ var WebRTCManager = (function () {
     var pc = new RTCPeerConnection({ iceServers: iceServers });
     var pendingCandidates = [];
     var closed = false;
-    var localCandTypes = [];
-
-    // #region agent log
-    function dbgRtc_(hypothesisId, message, data) {
-      var payload = JSON.stringify({
-        sessionId: 'b641af',
-        runId: 'pre-fix',
-        hypothesisId: hypothesisId,
-        location: 'WebRTCManager.js',
-        message: message,
-        data: data || {},
-        timestamp: Date.now()
-      });
-      var opts = {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'b641af' },
-        body: payload
-      };
-      // 本機 + 區網（手機測 http://192.168.1.136:8766 時用）
-      [
-        'http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',
-        'http://192.168.1.136:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795'
-      ].forEach(function (url) { fetch(url, opts).catch(function () {}); });
-    }
-    dbgRtc_('A', 'pc created', {
-      iceServerUrls: iceServers.map(function (s) {
-        return typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
-      }),
-      hasTurn: iceServers.some(function (s) {
-        var u = typeof s.urls === 'string' ? s.urls : (s.urls || []).join(',');
-        return /turn:/i.test(u);
-      })
-    });
-    // #endregion
 
     pc.onicecandidate = function (event) {
-      if (closed) return;
-      if (!event.candidate) {
-        // #region agent log
-        dbgRtc_('C', 'ice gathering complete', { localCandTypes: localCandTypes.slice() });
-        // #endregion
-        return;
-      }
-      var typ = (event.candidate.type || (event.candidate.candidate || '').match(/ typ ([a-z0-9]+)/) || [])[1] ||
-        (String(event.candidate.candidate || '').indexOf(' typ relay') >= 0 ? 'relay' :
-          String(event.candidate.candidate || '').indexOf(' typ srflx') >= 0 ? 'srflx' :
-            String(event.candidate.candidate || '').indexOf(' typ host') >= 0 ? 'host' : 'unknown');
-      if (localCandTypes.indexOf(typ) < 0) localCandTypes.push(typ);
-      // #region agent log
-      dbgRtc_('C', 'local ice candidate', { type: typ, protocol: event.candidate.protocol || null });
-      // #endregion
-      if (!options.onIceCandidate) return;
+      if (closed || !event.candidate || !options.onIceCandidate) return;
       options.onIceCandidate(event.candidate);
     };
 
     pc.ontrack = function (event) {
       if (closed || !options.onTrack) return;
-      // #region agent log
-      dbgRtc_('B', 'ontrack remote media', { trackKind: event.track && event.track.kind });
-      // #endregion
       var stream = (event.streams && event.streams[0]) || new MediaStream([event.track]);
-      options.onTrack(stream);
+      options.onTrack(stream, event.track);
     };
 
     pc.oniceconnectionstatechange = function () {
       if (closed || !options.onConnectionState) return;
-      // #region agent log
-      dbgRtc_('B', 'iceConnectionState', {
-        state: pc.iceConnectionState,
-        connectionState: pc.connectionState,
-        gathering: pc.iceGatheringState,
-        localCandTypes: localCandTypes.slice()
-      });
-      // #endregion
       options.onConnectionState(pc.iceConnectionState);
     };
 
@@ -136,6 +76,21 @@ var WebRTCManager = (function () {
       });
     }
 
+    /** 限制送出影像的碼率與幀率；需在 setLocalDescription 之後呼叫才會生效 */
+    function capVideoBitrate(maxBps, maxFps) {
+      if (closed) return Promise.resolve();
+      var jobs = pc.getSenders().filter(function (s) {
+        return s.track && s.track.kind === 'video' && s.getParameters && s.setParameters;
+      }).map(function (s) {
+        var p = s.getParameters();
+        if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+        p.encodings[0].maxBitrate = maxBps;
+        if (maxFps) p.encodings[0].maxFramerate = maxFps;
+        return s.setParameters(p).catch(function () {});
+      });
+      return Promise.all(jobs);
+    }
+
     /** 網路路徑失效時重開 ICE。只有原本的發話端可以送出新的 offer。 */
     function restartIce() {
       return createOffer({ iceRestart: true });
@@ -156,6 +111,7 @@ var WebRTCManager = (function () {
       acceptOffer: acceptOffer,
       acceptAnswer: acceptAnswer,
       addIceCandidate: addIceCandidate,
+      capVideoBitrate: capVideoBitrate,
       restartIce: restartIce,
       close: close
     };

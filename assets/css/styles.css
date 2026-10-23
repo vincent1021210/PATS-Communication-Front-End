@@ -928,7 +928,81 @@ select.email-domain {
 .call-round.is-danger { background: #ef4444; color: #fff; }
 .call-round.is-ok { background: #22c55e; color: #fff; }
 .call-round .material-symbols-outlined { font-size: 28px; }
+.call-round.is-ok-soft { background: rgba(255,255,255,.22); color: #fff; }
 #call-remote { display: none; }
+
+/* 視訊通話：對方畫面鋪滿，自己畫面在右上小窗；撥號／響鈴時自己畫面全螢幕預覽 */
+.call-stage { display: none; }
+.call-layer.is-video {
+  padding: 0;
+  place-items: stretch;
+  background: #000;
+}
+.call-layer.is-video .call-stage {
+  display: block;
+  position: absolute; inset: 0;
+  overflow: hidden;
+  background: #0b0f14;
+}
+.call-remote-video {
+  display: none;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+.call-remote-video.is-contain { object-fit: contain; }
+.call-layer.has-remote-video .call-remote-video { display: block; }
+.call-local-video {
+  position: absolute;
+  top: calc(16px + env(safe-area-inset-top));
+  right: 16px;
+  z-index: 2;
+  width: min(28vw, 160px);
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 2px solid rgba(255,255,255,.35);
+  background: #111;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  transform: scaleX(-1);
+}
+.call-layer.is-preview:not(.has-remote-video) .call-local-video {
+  top: 0; right: 0;
+  width: 100%; height: 100%;
+  aspect-ratio: auto;
+  border: 0; border-radius: 0;
+  box-shadow: none;
+}
+.call-tap-hint {
+  display: none;
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 10px 18px;
+  border-radius: var(--r-full);
+  background: rgba(0,0,0,.6);
+  color: #fff; font-size: 14px;
+}
+.call-layer.needs-tap .call-tap-hint { display: block; }
+.call-layer.is-video .call-card {
+  position: relative; z-index: 3;
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: calc(24px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));
+  border-radius: 0;
+  box-shadow: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,.55), transparent 24%, transparent 68%, rgba(0,0,0,.6));
+  pointer-events: none;
+}
+.call-layer.is-video .call-head,
+.call-layer.is-video .call-actions { pointer-events: auto; }
+.call-layer.is-video .call-head h2,
+.call-layer.is-video .call-head p { text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.call-layer.is-video.has-remote-video .call-head .avatar { display: none; }
+.call-layer.is-video .call-actions { margin-top: 0; }
+.call-layer.is-video .call-round:not(.is-danger):not(.is-ok) {
+  background: rgba(255,255,255,.2);
+  backdrop-filter: blur(6px);
+}
 
 .loading-veil {
   position: fixed; inset: 0; z-index: 100;
