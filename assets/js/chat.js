@@ -381,29 +381,38 @@ var PatsChat = (function () {
       : ((message.senderName || '成員') + ' 發起了群組通話');
 
     return el('div', {
-      class: 'msg-call-invite',
+      class: 'msg msg-call-invite' + (message.mine ? ' is-mine' : ''),
       'data-id': message.id,
-      'data-call-id': callId
+      'data-call-id': callId,
+      'data-sender': message.senderId || ''
     }, [
-      el('div', { class: 'msg-call-card' }, [
-        el('div', { class: 'msg-call-icon' }, [icon('call')]),
-        el('div', { class: 'msg-call-body' }, [
-          el('div', { class: 'msg-call-title', text: who }),
-          el('div', { class: 'msg-call-sub', text: groupName }),
-          el('button', {
-            class: 'btn btn-primary msg-call-join',
-            type: 'button',
-            text: '進入群組通話',
-            onclick: function () {
-              if (!window.PatsCall || !PatsCall.joinGroupCall) {
-                PATS.toast('請強制重新整理以載入群組通話功能。', 'error');
-                return;
+      message.mine
+        ? el('div', { class: 'avatar', style: 'visibility:hidden' })
+        : PATS.avatarNode(message.senderName, message.senderAvatar),
+      el('div', { class: 'stack' }, [
+        (!message.mine && state.activeType === 'group')
+          ? el('div', { class: 'sender', text: message.senderName })
+          : null,
+        el('div', { class: 'msg-call-card' }, [
+          el('div', { class: 'msg-call-icon' }, [icon('call')]),
+          el('div', { class: 'msg-call-body' }, [
+            el('div', { class: 'msg-call-title', text: who }),
+            el('div', { class: 'msg-call-sub', text: groupName }),
+            el('button', {
+              class: 'btn btn-primary msg-call-join',
+              type: 'button',
+              text: '進入群組通話',
+              onclick: function () {
+                if (!window.PatsCall || !PatsCall.joinGroupCall) {
+                  PATS.toast('請強制重新整理以載入群組通話功能。', 'error');
+                  return;
+                }
+                PatsCall.joinGroupCall(callId, groupName);
               }
-              PatsCall.joinGroupCall(callId, groupName);
-            }
-          })
+            })
+          ])
         ]),
-        el('div', { class: 'msg-call-time', text: PATS.formatTime(message.createdAt) })
+        el('div', { class: 'time', text: PATS.formatTime(message.createdAt) })
       ])
     ]);
   }
