@@ -17,6 +17,8 @@ var PatsChat = (function () {
   var listSignature = '';
   var loadedScope = '';
   var thread = { day: '', sender: '' };
+  var scrollState = { unseen: 0 };
+  var NEAR_BOTTOM_PX = 120;
   var polling = false;
   var pollTimer = null;
   var pollTick = 0;
@@ -256,64 +258,31 @@ var PatsChat = (function () {
     thread = { day: '', sender: '' };
     renderMessages(body, data.messages, false);
 
+    scrollState.unseen = 0;
+    var jump = el('button', {
+      class: 'chat-jump', type: 'button', id: 'chat-jump',
+      title: '滑到最新訊息', 'aria-label': '滑到最新訊息'
+    }, [icon('keyboard_arrow_down'), el('span', { class: 'chat-jump-badge' })]);
+    jump.addEventListener('click', function () { scrollToBottom({ smooth: true }); });
+    pane.appendChild(jump);
+
+    var scrollQueued = false;
+    body.addEventListener('scroll', function () {
+      if (scrollQueued) return;
+      scrollQueued = true;
+      requestAnimationFrame(function () {
+        scrollQueued = false;
+        var near = isNearBottom(body);
+        body.setAttribute('data-stick', near ? '1' : '0');
+        if (near) scrollState.unseen = 0;
+        syncJumpButton();
+      });
+    }, { passive: true });
+
     pane.appendChild(composer());
     // 通話改由右上角綠色按鈕發起，避免手機底部再多一條藍鈕擠壓輸入區
     scrollToBottom();
-    // #region agent log
-    dbgScrollSnapshot('after-render', 'A,B');
-    setTimeout(function () { dbgScrollSnapshot('after-render+3s', 'A,B,D'); }, 3000);
-    if (!body.getAttribute('data-dbg-wheel')) {
-      body.setAttribute('data-dbg-wheel', '1');
-      var dbgWheelCount = 0;
-      pane.addEventListener('wheel', function (e) {
-        if (dbgWheelCount++ > 4) return;
-        var cb = $('#chat-body');
-        var before = cb ? cb.scrollTop : -1;
-        var tgt = e.target;
-        var tgtDesc = tgt ? (tgt.tagName + '.' + String(tgt.className || '').slice(0, 40)) : '';
-        var pt = document.elementFromPoint(e.clientX, e.clientY);
-        var ptDesc = pt ? (pt.tagName + '.' + String(pt.className || '').slice(0, 40)) : '';
-        requestAnimationFrame(function () {
-          dbgLog('wheel', 'C,E', {
-            deltaY: e.deltaY, target: tgtDesc, atPoint: ptDesc,
-            insideChatBody: !!(cb && tgt && cb.contains(tgt)),
-            scrollTopBefore: before, scrollTopAfter: cb ? cb.scrollTop : -1,
-            modalChildren: ($('#modal-root') || {}).childElementCount || 0
-          });
-        });
-      }, { passive: true });
-    }
-    // #endregion
   }
-
-  // #region agent log
-  function dbgLog(message, hyp, data) {
-    fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'run1',hypothesisId:hyp,location:'chat.js:renderConversation',message:message,data:data,timestamp:Date.now()})}).catch(()=>{});
-  }
-  function dbgScrollSnapshot(tag, hyp) {
-    var cb = $('#chat-body');
-    if (!cb) return;
-    var pane = cb.parentElement;
-    var cs = getComputedStyle(cb);
-    var form = pane && pane.querySelector('.composer');
-    var formRect = form ? form.getBoundingClientRect() : null;
-    var imgs = cb.querySelectorAll('img.msg-image');
-    var loaded = 0;
-    for (var i = 0; i < imgs.length; i++) if (imgs[i].complete) loaded++;
-    dbgLog('scroll-snapshot ' + tag, hyp, {
-      innerHeight: window.innerHeight,
-      bodyClientH: cb.clientHeight, bodyScrollH: cb.scrollHeight, bodyScrollTop: cb.scrollTop,
-      overflowY: cs.overflowY, minHeight: cs.minHeight, flex: cs.flex,
-      paneH: pane ? pane.getBoundingClientRect().height : -1,
-      paneMinH: pane ? getComputedStyle(pane).minHeight : '',
-      composerTop: formRect ? Math.round(formRect.top) : null,
-      composerVisible: formRect ? formRect.top < window.innerHeight : null,
-      docScrollH: document.documentElement.scrollHeight,
-      imgs: imgs.length, imgsLoaded: loaded,
-      modalChildren: ($('#modal-root') || {}).childElementCount || 0
-    });
-  }
-  // #endregion
 
   /* ---------------------------------------------------------- 氣泡網址可點 */
 
@@ -596,6 +565,13 @@ var PatsChat = (function () {
       loading: 'lazy'
     });
     if (meta.previewUrl) img.setAttribute('data-blob', meta.previewUrl);
+    // lazy 圖片載入後才撐高；使用者原本在底部時要重新貼底
+    img.addEventListener('load', function () {
+      var body = $('#chat-body');
+      if (!body || !body.contains(img)) return;
+      if (body.getAttribute('data-stick') === '1') scrollToBottom();
+      else syncJumpButton();
+    });
     img.addEventListener('click', function () {
       var full = meta.previewUrl || driveImageUrl(meta.fileId, 'w1600');
       openImageViewer({
@@ -1034,9 +1010,42 @@ var PatsChat = (function () {
     return form;
   }
 
-  function scrollToBottom() {
+  function isNearBottom(body) {
+    if (!body) return true;
+    return body.scrollHeight - body.scrollTop - body.clientHeight <= NEAR_BOTTOM_PX;
+  }
+
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function scrollToBottom(opts) {
     var body = $('#chat-body');
-    if (body) body.scrollTop = body.scrollHeight;
+    if (!body) return;
+    if (opts && opts.smooth && !prefersReducedMotion() && typeof body.scrollTo === 'function') {
+      body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' });
+    } else {
+      body.scrollTop = body.scrollHeight;
+    }
+    body.setAttribute('data-stick', '1');
+    scrollState.unseen = 0;
+    syncJumpButton();
+  }
+
+  function syncJumpButton() {
+    var btn = $('#chat-jump');
+    var body = $('#chat-body');
+    if (!btn || !body) return;
+    var near = isNearBottom(body);
+    if (near) scrollState.unseen = 0;
+    btn.classList.toggle('is-visible', !near);
+    var badge = btn.querySelector('.chat-jump-badge');
+    var n = scrollState.unseen;
+    if (badge) {
+      badge.textContent = n > 99 ? '99+' : String(n);
+      badge.classList.toggle('hidden', n <= 0);
+    }
+    btn.setAttribute('aria-label', n > 0 ? ('滑到最新訊息（' + n + ' 則新訊息）') : '滑到最新訊息');
   }
 
   /* ------------------------------------------------------------ 資料流程 */
@@ -1418,12 +1427,24 @@ var PatsChat = (function () {
       if (!messageNode(messages[i].id)) fresh.push(messages[i]);
     }
     if (!fresh.length) return;
-    var before = body.scrollHeight;
+    options = options || {};
+    var wasNear = isNearBottom(body);
+    var hasMine = false;
+    var othersCount = 0;
+    for (var j = 0; j < fresh.length; j++) {
+      if (fresh[j].mine) hasMine = true;
+      else othersCount += 1;
+    }
     renderMessages(body, fresh, true);
-    if (!options || !options.optimistic) {
+    if (!options.optimistic) {
       state.lastMessageAt = fresh[fresh.length - 1].createdAt;
     }
-    if (body.scrollHeight !== before) scrollToBottom();
+    if (wasNear || hasMine || options.forceScroll || options.optimistic) {
+      scrollToBottom();
+    } else {
+      scrollState.unseen += othersCount;
+      syncJumpButton();
+    }
   }
 
   function isChatView(view) {
