@@ -260,74 +260,60 @@ var PatsChat = (function () {
     // 通話改由右上角綠色按鈕發起，避免手機底部再多一條藍鈕擠壓輸入區
     scrollToBottom();
     // #region agent log
-    function patsDebugScroll(reason, extra) {
-      var app = document.getElementById('app');
-      var paneEl = document.getElementById('chat-pane');
-      var bodyEl = document.getElementById('chat-body');
-      var modal = document.getElementById('modal-root');
-      var imgs = bodyEl ? bodyEl.querySelectorAll('img.msg-image') : [];
-      var imgStats = [];
-      for (var i = 0; i < imgs.length && i < 5; i++) {
-        var im = imgs[i];
-        var cs = window.getComputedStyle(im);
-        imgStats.push({
-          natW: im.naturalWidth, natH: im.naturalHeight,
-          cw: im.clientWidth, ch: im.clientHeight,
-          maxH: cs.maxHeight, objFit: cs.objectFit
-        });
-      }
-      var bcs = bodyEl ? window.getComputedStyle(bodyEl) : null;
-      var pcs = paneEl ? window.getComputedStyle(paneEl) : null;
-      var acs = app ? window.getComputedStyle(app) : null;
-      fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'b641af' },
-        body: JSON.stringify({
-          sessionId: 'b641af',
-          runId: 'scroll-pre',
-          hypothesisId: 'A-E',
-          location: 'chat.js:openConversation',
-          message: reason || 'scroll-metrics',
-          data: Object.assign({
-            innerH: window.innerHeight,
-            appH: app && app.clientHeight,
-            appScrollH: app && app.scrollHeight,
-            appOverflow: acs && acs.overflow,
-            appGridRows: acs && acs.gridTemplateRows,
-            paneH: paneEl && paneEl.clientHeight,
-            paneScrollH: paneEl && paneEl.scrollHeight,
-            paneMinH: pcs && pcs.minHeight,
-            paneOverflow: pcs && pcs.overflow,
-            bodyH: bodyEl && bodyEl.clientHeight,
-            bodyScrollH: bodyEl && bodyEl.scrollHeight,
-            bodyScrollTop: bodyEl && bodyEl.scrollTop,
-            bodyOverflowY: bcs && bcs.overflowY,
-            canScrollBody: !!(bodyEl && bodyEl.scrollHeight > bodyEl.clientHeight + 2),
-            canScrollPane: !!(paneEl && paneEl.scrollHeight > paneEl.clientHeight + 2),
-            modalKids: modal ? modal.children.length : -1,
-            imgCount: imgs.length,
-            imgStats: imgStats
-          }, extra || {}),
-          timestamp: Date.now()
-        })
-      }).catch(function () {});
-    }
-    patsDebugScroll('after-open-chat');
-    if (body && !body.getAttribute('data-debug-scroll')) {
-      body.setAttribute('data-debug-scroll', '1');
-      body.addEventListener('wheel', function (ev) {
-        patsDebugScroll('wheel-on-body', {
-          deltaY: ev.deltaY,
-          targetTag: ev.target && ev.target.tagName,
-          targetClass: ev.target && ev.target.className
+    dbgScrollSnapshot('after-render', 'A,B');
+    setTimeout(function () { dbgScrollSnapshot('after-render+3s', 'A,B,D'); }, 3000);
+    if (!body.getAttribute('data-dbg-wheel')) {
+      body.setAttribute('data-dbg-wheel', '1');
+      var dbgWheelCount = 0;
+      pane.addEventListener('wheel', function (e) {
+        if (dbgWheelCount++ > 4) return;
+        var cb = $('#chat-body');
+        var before = cb ? cb.scrollTop : -1;
+        var tgt = e.target;
+        var tgtDesc = tgt ? (tgt.tagName + '.' + String(tgt.className || '').slice(0, 40)) : '';
+        var pt = document.elementFromPoint(e.clientX, e.clientY);
+        var ptDesc = pt ? (pt.tagName + '.' + String(pt.className || '').slice(0, 40)) : '';
+        requestAnimationFrame(function () {
+          dbgLog('wheel', 'C,E', {
+            deltaY: e.deltaY, target: tgtDesc, atPoint: ptDesc,
+            insideChatBody: !!(cb && tgt && cb.contains(tgt)),
+            scrollTopBefore: before, scrollTopAfter: cb ? cb.scrollTop : -1,
+            modalChildren: ($('#modal-root') || {}).childElementCount || 0
+          });
         });
       }, { passive: true });
     }
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () { patsDebugScroll('after-layout'); });
-    });
     // #endregion
   }
+
+  // #region agent log
+  function dbgLog(message, hyp, data) {
+    fetch('http://127.0.0.1:7933/ingest/c8756446-874d-4039-81a0-9dd77fab3795',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b641af'},body:JSON.stringify({sessionId:'b641af',runId:'run1',hypothesisId:hyp,location:'chat.js:renderConversation',message:message,data:data,timestamp:Date.now()})}).catch(()=>{});
+  }
+  function dbgScrollSnapshot(tag, hyp) {
+    var cb = $('#chat-body');
+    if (!cb) return;
+    var pane = cb.parentElement;
+    var cs = getComputedStyle(cb);
+    var form = pane && pane.querySelector('.composer');
+    var formRect = form ? form.getBoundingClientRect() : null;
+    var imgs = cb.querySelectorAll('img.msg-image');
+    var loaded = 0;
+    for (var i = 0; i < imgs.length; i++) if (imgs[i].complete) loaded++;
+    dbgLog('scroll-snapshot ' + tag, hyp, {
+      innerHeight: window.innerHeight,
+      bodyClientH: cb.clientHeight, bodyScrollH: cb.scrollHeight, bodyScrollTop: cb.scrollTop,
+      overflowY: cs.overflowY, minHeight: cs.minHeight, flex: cs.flex,
+      paneH: pane ? pane.getBoundingClientRect().height : -1,
+      paneMinH: pane ? getComputedStyle(pane).minHeight : '',
+      composerTop: formRect ? Math.round(formRect.top) : null,
+      composerVisible: formRect ? formRect.top < window.innerHeight : null,
+      docScrollH: document.documentElement.scrollHeight,
+      imgs: imgs.length, imgsLoaded: loaded,
+      modalChildren: ($('#modal-root') || {}).childElementCount || 0
+    });
+  }
+  // #endregion
 
   /* ---------------------------------------------------------- 氣泡網址可點 */
 
