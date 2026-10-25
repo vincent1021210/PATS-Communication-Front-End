@@ -557,6 +557,7 @@ select.email-domain {
 .chat-pane {
   display: flex; flex-direction: column;
   min-width: 0;
+  min-height: 0; /* 不設時 grid 列會被訊息撐高，輸入框跑出畫面且無法捲動 */
   background: var(--canvas);
 }
 
@@ -588,7 +589,7 @@ select.email-domain {
   gap: 8px;
 }
 
-.chat-body { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 4px; }
+.chat-body { flex: 1; min-height: 0; padding: 20px 24px; display: flex; flex-direction: column; gap: 4px; }
 
 .msg-day {
   align-self: center; margin: 14px 0 10px;
