@@ -776,14 +776,17 @@ select.email-domain {
 }
 .img-viewer-backdrop {
   position: fixed; inset: 0; z-index: 80;
-  display: grid; place-items: center;
-  padding: 24px 24px 88px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px 24px calc(88px + env(safe-area-inset-bottom, 0px));
   background: rgba(0,0,0,.78);
   cursor: zoom-out;
 }
 .img-viewer-pic {
-  max-width: min(960px, 100%);
-  max-height: min(78vh, 100%);
+  /* 不可用 100%：父層高度不確定時整個上限失效，長圖會往下溢出被下載列擋住 */
+  max-width: min(960px, calc(100vw - 48px));
+  max-height: calc(100vh - 112px);
+  max-height: calc(100dvh - 112px - env(safe-area-inset-bottom, 0px));
+  width: auto; height: auto;
   object-fit: contain;
   border-radius: 8px;
   box-shadow: 0 16px 48px rgba(0,0,0,.45);

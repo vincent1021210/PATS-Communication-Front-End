@@ -1227,9 +1227,10 @@ var PatsChat = (function () {
     var messages = data.messages || [];
     if (messages.length) {
       var last = messages[messages.length - 1];
+      var lastText = isImageMessage(last) ? '傳送了圖片' : last.body;
       preview = last.kind === 'system'
         ? last.body
-        : ((last.mine ? '你' : (last.senderName || '')) + (last.body ? '：' + last.body : ''));
+        : ((last.mine ? '你' : (last.senderName || '')) + (lastText ? '：' + lastText : ''));
       lastAt = last.createdAt || lastAt;
     }
     var row = {
