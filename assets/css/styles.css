@@ -757,7 +757,7 @@ select.email-domain {
   max-height: 320px;
   width: auto; height: auto;
   border-radius: 12px;
-  object-fit: cover;
+  object-fit: contain; /* cover 會把直向文件裁成怪圖 */
   cursor: zoom-in;
   background: var(--surface-sunk);
 }

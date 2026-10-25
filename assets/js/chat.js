@@ -386,10 +386,33 @@ var PatsChat = (function () {
     };
   }
 
-  function driveImageUrl(fileId, size) {
+  /** 顯示用網址：lh3 較穩；失敗再退回 Drive thumbnail */
+  function driveImageUrl(fileId, size, kind) {
     if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) return '';
     var sz = size || 'w1000';
-    return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=' + sz;
+    var w = parseInt(String(sz).replace(/\D/g, ''), 10) || 1000;
+    if (kind === 'thumb') {
+      return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=' + sz;
+    }
+    // googleusercontent 直接出圖，比 thumbnail 少遇到空白／壞圖
+    return 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(fileId) + '=w' + w;
+  }
+
+  function attachImageFallbacks(img, fileId, size) {
+    if (!img || !fileId) return;
+    var tried = 0;
+    img.addEventListener('error', function onErr() {
+      tried += 1;
+      if (tried === 1) {
+        img.src = driveImageUrl(fileId, size, 'thumb');
+        return;
+      }
+      if (tried === 2) {
+        img.src = 'https://drive.google.com/uc?export=view&id=' + encodeURIComponent(fileId);
+        return;
+      }
+      img.removeEventListener('error', onErr);
+    });
   }
 
   function defaultImageFileName() {
@@ -485,7 +508,11 @@ var PatsChat = (function () {
     if (!root) return;
     function close() { root.innerHTML = ''; }
 
-    var img = el('img', { class: 'img-viewer-pic', src: url, alt: '圖片' });
+    var img = el('img', {
+      class: 'img-viewer-pic', src: url, alt: '圖片',
+      referrerpolicy: 'no-referrer'
+    });
+    if (opts.fileId && !opts.localBlobUrl) attachImageFallbacks(img, opts.fileId, 'w2400');
     img.addEventListener('click', function (e) { e.stopPropagation(); });
 
     var downloadBtn = el('button', {
@@ -562,9 +589,11 @@ var PatsChat = (function () {
       class: 'msg-image',
       src: src,
       alt: '圖片',
-      loading: 'lazy'
+      loading: 'lazy',
+      referrerpolicy: 'no-referrer'
     });
     if (meta.previewUrl) img.setAttribute('data-blob', meta.previewUrl);
+    if (meta.fileId && !meta.previewUrl) attachImageFallbacks(img, meta.fileId, 'w640');
     // lazy 圖片載入後才撐高；使用者原本在底部時要重新貼底
     img.addEventListener('load', function () {
       var body = $('#chat-body');
@@ -573,12 +602,13 @@ var PatsChat = (function () {
       else syncJumpButton();
     });
     img.addEventListener('click', function () {
-      var full = meta.previewUrl || driveImageUrl(meta.fileId, 'w1600');
+      var full = meta.previewUrl || driveImageUrl(meta.fileId, 'w2400');
       openImageViewer({
         url: full || src,
         localBlobUrl: meta.previewUrl || '',
         conversationId: state.activeId || '',
-        messageId: message.id || ''
+        messageId: message.id || '',
+        fileId: meta.fileId || ''
       });
     });
     bubble.appendChild(img);
@@ -607,7 +637,11 @@ var PatsChat = (function () {
       return;
     }
     var url = driveImageUrl(meta.fileId, 'w640');
-    if (url) img.src = url;
+    if (url) {
+      img.setAttribute('referrerpolicy', 'no-referrer');
+      attachImageFallbacks(img, meta.fileId, 'w640');
+      img.src = url;
+    }
   }
 
   /** 手機相簿常給空 MIME 或 HEIC；不能只靠 file.type === image/* */
