@@ -115,15 +115,56 @@ var PATS = (function () {
    * 只要帶了 application/json 就會觸發預檢而整個失敗。用 text/plain 送 JSON
    * 字串屬於「簡單請求」，瀏覽器會直接送出，後端再自行解析 body。
    */
-  /** 手機瀏覽器常留舊版 index.html／config.js；遇到舊後端時帶新網址重載一次 */
-  function reloadStaleOnce_() {
+  /* ------------------------------------------------------- 自動更新版本 */
+
+  // GitHub Pages 對 index.html 有 10 分鐘快取，改不了 header；
+  // 改用 no-store 讀 version.json，版本不同就換網址重載一次。
+  var RELOADED_KEY = 'pats-reloaded-for';
+  var updateRunning = false;
+
+  function currentBuild() {
+    var meta = document.querySelector('meta[name="pats-build"]');
+    return meta ? String(meta.getAttribute('content') || '') : '';
+  }
+
+  /** 拿掉 ?v= / ?r=，網址列維持固定網址 */
+  function cleanVersionParams() {
     try {
-      if (sessionStorage.getItem('pats-stale-reload')) return;
-      sessionStorage.setItem('pats-stale-reload', '1');
-    } catch (e) { return; }
-    var url = new URL(window.location.href);
-    url.searchParams.set('r', String(Date.now()));
-    setTimeout(function () { window.location.replace(url.toString()); }, 800);
+      var url = new URL(window.location.href);
+      if (!url.searchParams.has('v') && !url.searchParams.has('r')) return;
+      url.searchParams.delete('v');
+      url.searchParams.delete('r');
+      var clean = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '') + url.hash;
+      window.history.replaceState(window.history.state, '', clean);
+    } catch (e) { /* ignore */ }
+  }
+
+  function checkForUpdate(reason) {
+    if (updateRunning || !window.fetch) return Promise.resolve(false);
+    var mine = currentBuild();
+    if (!mine) return Promise.resolve(false);
+    updateRunning = true;
+    return fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (data) {
+        var latest = data && data.build ? String(data.build) : '';
+        if (!latest || latest === mine) return false;
+        try {
+          // 同一版本只自動重載一次，避免 Pages 還沒部署完時無限重載
+          if (sessionStorage.getItem(RELOADED_KEY) === latest) return false;
+          sessionStorage.setItem(RELOADED_KEY, latest);
+        } catch (e) { return false; }
+        var url = new URL(window.location.href);
+        url.searchParams.delete('r');
+        url.searchParams.set('v', latest);
+        window.location.replace(url.toString());
+        return true;
+      })
+      .catch(function () { return false; })
+      .then(function (reloading) {
+        updateRunning = false;
+        return reloading;
+      });
   }
 
   function rpc(action, payload) {
@@ -153,7 +194,7 @@ var PATS = (function () {
           throw fail('BAD_RESPONSE');
         }
         if (result && result.ok) return result.data;
-        if (result && result.error === 'UNKNOWN_ACTION') reloadStaleOnce_();
+        if (result && result.error === 'UNKNOWN_ACTION') checkForUpdate('stale-backend');
         throw fail((result && result.error) || 'UNKNOWN_ERROR');
       })
       .catch(function (err) {
@@ -392,6 +433,7 @@ var PATS = (function () {
     formatTime: formatTime, formatListTime: formatListTime,
     formatDay: formatDay, formatBytes: formatBytes,
     toast: toast, openModal: openModal, closeModal: closeModal,
-    openMenu: openMenu, closeMenu: closeMenu
+    openMenu: openMenu, closeMenu: closeMenu,
+    checkForUpdate: checkForUpdate, cleanVersionParams: cleanVersionParams
   };
 })();

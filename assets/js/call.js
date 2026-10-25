@@ -1753,6 +1753,12 @@ var PatsCall = (function () {
     setSignalingUrl: setSignalingUrl,
     signalState: function () { return signalState; },
     onSignalChange: onSignalChange,
-    isConnected: function () { return !!(socket && socket.connected); }
+    isConnected: function () { return !!(socket && socket.connected); },
+    /** 有通話（響鈴、撥號、通話中、群組）時為 true；自動更新會避開 */
+    isBusy: function () {
+      if (session) return true;
+      var layer = $('call-layer');
+      return !!(layer && !layer.classList.contains('hidden'));
+    }
   };
 })();

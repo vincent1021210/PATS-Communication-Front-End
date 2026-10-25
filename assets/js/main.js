@@ -22,6 +22,9 @@ var PatsMain = (function () {
   /* --------------------------------------------------------------- 啟動 */
 
   function boot() {
+    PATS.cleanVersionParams();
+    PATS.checkForUpdate('boot');
+    bindUpdateChecks();
     PatsAuth.init();
     PatsChat.init();
     bindRail();
@@ -237,6 +240,32 @@ var PatsMain = (function () {
         ]);
       });
     }
+  }
+
+  /* ----------------------------------------------------------- 自動更新 */
+
+  var UPDATE_CHECK_MS = 5 * 60 * 1000;
+
+  /** 通話、打字、預覽／對話框開著時不重整，避免打斷使用者 */
+  function isBusyForReload() {
+    if (window.PatsCall && typeof PatsCall.isBusy === 'function' && PatsCall.isBusy()) return true;
+    var input = document.getElementById('composer-input');
+    if (input && String(input.value || '').trim()) return true;
+    var modal = document.getElementById('modal-root');
+    if (modal && modal.childElementCount > 0) return true;
+    return false;
+  }
+
+  function maybeCheckForUpdate(reason) {
+    if (document.hidden || isBusyForReload()) return;
+    PATS.checkForUpdate(reason);
+  }
+
+  function bindUpdateChecks() {
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) maybeCheckForUpdate('visible');
+    });
+    setInterval(function () { maybeCheckForUpdate('interval'); }, UPDATE_CHECK_MS);
   }
 
   function bindResize() {
