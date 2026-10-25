@@ -369,19 +369,153 @@ var PatsChat = (function () {
     return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=' + sz;
   }
 
-  function openImageViewer(url) {
+  function defaultImageFileName() {
+    var d = new Date();
+    function pad(n) { return n < 10 ? '0' + n : String(n); }
+    return 'pats-' + d.getFullYear()
+      + pad(d.getMonth() + 1) + pad(d.getDate()) + '-'
+      + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + '.jpg';
+  }
+
+  function base64ToBlob(b64, mime) {
+    var bin = atob(String(b64 || ''));
+    var len = bin.length;
+    var arr = new Uint8Array(len);
+    for (var i = 0; i < len; i += 1) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime || 'image/jpeg' });
+  }
+
+  function saveImageBlob(blob, fileName) {
+    fileName = fileName || defaultImageFileName();
+    var mime = blob.type || 'image/jpeg';
+    var file;
+    try {
+      file = new File([blob], fileName, { type: mime });
+    } catch (e) {
+      file = null;
+    }
+
+    if (file && navigator.canShare && navigator.share) {
+      try {
+        if (navigator.canShare({ files: [file] })) {
+          return navigator.share({ files: [file], title: fileName }).then(function () {
+            PATS.toast('已分享／儲存', 'success');
+          }).catch(function (err) {
+            if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) return;
+            return fallbackDownloadBlob(blob, fileName);
+          });
+        }
+      } catch (e2) { /* fall through */ }
+    }
+    return fallbackDownloadBlob(blob, fileName);
+  }
+
+  function fallbackDownloadBlob(blob, fileName) {
+    var url = URL.createObjectURL(blob);
+    var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isIos) {
+      var opened = window.open(url, '_blank');
+      if (!opened) {
+        PATS.toast('請允許開啟新分頁，再長按圖片儲存到照片。', 'error');
+      } else {
+        PATS.toast('請長按圖片 → 儲存到照片');
+      }
+      setTimeout(function () {
+        try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+      }, 60000);
+      return Promise.resolve();
+    }
+
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () {
+      try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+    }, 2000);
+    PATS.toast('已下載', 'success');
+    return Promise.resolve();
+  }
+
+  function fetchBlobFromUrl(url) {
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw PATS.fail('NETWORK');
+      return res.blob();
+    });
+  }
+
+  /**
+   * opts: { url, conversationId, messageId, localBlobUrl }
+   */
+  function openImageViewer(opts) {
+    if (typeof opts === 'string') opts = { url: opts };
+    opts = opts || {};
+    var url = opts.url || opts.localBlobUrl || '';
     if (!url) return;
     var root = $('#modal-root');
     if (!root) return;
     function close() { root.innerHTML = ''; }
+
     var img = el('img', { class: 'img-viewer-pic', src: url, alt: '圖片' });
     img.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    var downloadBtn = el('button', {
+      class: 'img-viewer-download',
+      type: 'button',
+      text: '下載'
+    });
+    downloadBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (downloadBtn.disabled) return;
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = '下載中…';
+      PATS.toast('下載中…');
+
+      var done = function () {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = '下載';
+      };
+
+      var run;
+      if (opts.localBlobUrl) {
+        run = fetchBlobFromUrl(opts.localBlobUrl).then(function (blob) {
+          return saveImageBlob(blob, defaultImageFileName());
+        });
+      } else if (opts.conversationId && opts.messageId
+          && String(opts.messageId).indexOf('pending-') !== 0) {
+        run = PATS.rpc('downloadChatImage', {
+          conversationId: opts.conversationId,
+          messageId: opts.messageId
+        }).then(function (data) {
+          var blob = base64ToBlob(data.dataBase64, data.mime || 'image/jpeg');
+          return saveImageBlob(blob, data.fileName || defaultImageFileName());
+        });
+      } else {
+        run = Promise.reject(PATS.fail('NOT_FOUND'));
+      }
+
+      run.catch(function (err) {
+        handleError(err);
+      }).then(done);
+    });
+
+    var toolbar = el('div', {
+      class: 'img-viewer-toolbar',
+      onclick: function (e) { e.stopPropagation(); }
+    }, [downloadBtn]);
+
     var backdrop = el('div', {
       class: 'img-viewer-backdrop',
       onclick: close,
       role: 'dialog',
       'aria-label': '圖片預覽'
-    }, [img]);
+    }, [img, toolbar]);
     root.innerHTML = '';
     root.appendChild(backdrop);
   }
@@ -410,7 +544,12 @@ var PatsChat = (function () {
     if (meta.previewUrl) img.setAttribute('data-blob', meta.previewUrl);
     img.addEventListener('click', function () {
       var full = meta.previewUrl || driveImageUrl(meta.fileId, 'w1600');
-      openImageViewer(full || src);
+      openImageViewer({
+        url: full || src,
+        localBlobUrl: meta.previewUrl || '',
+        conversationId: state.activeId || '',
+        messageId: message.id || ''
+      });
     });
     bubble.appendChild(img);
     return bubble;

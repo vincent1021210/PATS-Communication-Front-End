@@ -95,6 +95,7 @@ function privateActions_() {
     listMessages: apiListMessages_,
     sendMessage: apiSendMessage_,
     sendChatImage: apiSendChatImage_,
+    downloadChatImage: apiDownloadChatImage_,
     markRead: apiMarkRead_,
     startDirect: apiStartDirect_,
     createGroup: apiCreateGroup_,

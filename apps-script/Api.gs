@@ -443,6 +443,64 @@ function apiSendChatImage_(user, payload) {
 }
 
 /**
+ * 成員下載聊天圖片：只接受 messageId（不單收 fileId），避免任意檔案洩漏。
+ * 回傳 JPEG base64，供前端存檔／分享。
+ */
+function apiDownloadChatImage_(user, payload) {
+  requireApiContext_(user);
+  denyParent_(user);
+  var conversationId = String((payload && payload.conversationId) || '');
+  var messageId = String((payload && payload.messageId) || '');
+  if (!conversationId || !messageId) throw new Error('BAD_REQUEST');
+  assertMember_(user.id, conversationId);
+
+  var message = dbGet_('messages', messageId);
+  if (!message || String(message.conversationId || '') !== conversationId) {
+    throw new Error('NOT_FOUND');
+  }
+  if (String(message.deleted || '') === 'true') throw new Error('NOT_FOUND');
+
+  var kind = String(message.kind || '');
+  var raw = String(message.body || '');
+  if (kind !== 'image' && raw.indexOf('IMAGE|') !== 0) {
+    throw new Error('IMAGE_BAD_TYPE');
+  }
+  if (raw.indexOf('IMAGE|') !== 0) throw new Error('IMAGE_BAD_TYPE');
+
+  var parts = raw.split('|');
+  var fileId = parts[1] || '';
+  var width = Math.floor(Number(parts[3]) || 0);
+  var height = Math.floor(Number(parts[4]) || 0);
+  if (fileId === 'EXPIRED' || !fileId) throw new Error('IMAGE_EXPIRED');
+  if (!/^[a-zA-Z0-9_-]+$/.test(fileId)) throw new Error('NOT_FOUND');
+
+  var blob;
+  try {
+    blob = DriveApp.getFileById(fileId).getBlob();
+  } catch (err) {
+    throw new Error('IMAGE_EXPIRED');
+  }
+  var bytes = blob.getBytes();
+  if (!bytes || !bytes.length) throw new Error('NOT_FOUND');
+  if (bytes.length > CHAT_IMAGE_MAX_BYTES) throw new Error('IMAGE_TOO_LARGE');
+
+  var mime = String(blob.getContentType() || 'image/jpeg').toLowerCase();
+  if (mime.indexOf('image/') !== 0) mime = 'image/jpeg';
+
+  var stamp = String(message.createdAt || nowIso_()).replace(/[-:]/g, '').replace(/\..*$/, '').replace('T', '-');
+  var shortId = messageId.slice(0, 8);
+  var fileName = 'pats-' + stamp + '-' + shortId + '.jpg';
+
+  return {
+    dataBase64: Utilities.base64Encode(bytes),
+    mime: mime === 'image/jpg' ? 'image/jpeg' : mime,
+    fileName: fileName,
+    width: width,
+    height: height
+  };
+}
+
+/**
  * 刪除已滿 20 天的聊天圖片，並把訊息改成 IMAGE|EXPIRED|…
  * 請在 Apps Script「觸發條件」設每日時間驅動執行本函式。
  */

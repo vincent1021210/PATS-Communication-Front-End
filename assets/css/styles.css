@@ -751,17 +751,42 @@ select.email-domain {
 .img-viewer-backdrop {
   position: fixed; inset: 0; z-index: 80;
   display: grid; place-items: center;
-  padding: 24px;
+  padding: 24px 24px 88px;
   background: rgba(0,0,0,.78);
   cursor: zoom-out;
 }
 .img-viewer-pic {
   max-width: min(960px, 100%);
-  max-height: min(90vh, 100%);
+  max-height: min(78vh, 100%);
   object-fit: contain;
   border-radius: 8px;
   box-shadow: 0 16px 48px rgba(0,0,0,.45);
   cursor: default;
+}
+.img-viewer-toolbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 81;
+  display: flex; justify-content: center; align-items: center;
+  gap: 12px;
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(transparent, rgba(0,0,0,.55));
+  cursor: default;
+}
+.img-viewer-download {
+  min-width: 120px; min-height: 44px;
+  padding: 10px 22px;
+  border: 0; border-radius: 999px;
+  background: #fff; color: #111;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,.28);
+}
+.img-viewer-download:disabled {
+  opacity: .55; cursor: not-allowed;
+}
+.img-viewer-download:hover:not(:disabled) {
+  background: #f3f4f6;
 }
 
 /* ================================================================ 設定 */
