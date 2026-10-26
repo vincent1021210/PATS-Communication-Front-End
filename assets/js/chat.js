@@ -593,6 +593,7 @@ var PatsChat = (function () {
       referrerpolicy: 'no-referrer'
     });
     if (meta.previewUrl) img.setAttribute('data-blob', meta.previewUrl);
+    if (meta.fileId) img.setAttribute('data-file-id', meta.fileId);
     if (meta.fileId && !meta.previewUrl) attachImageFallbacks(img, meta.fileId, 'w640');
     // lazy 圖片載入後才撐高；使用者原本在底部時要重新貼底
     img.addEventListener('load', function () {
@@ -601,14 +602,19 @@ var PatsChat = (function () {
       if (body.getAttribute('data-stick') === '1') scrollToBottom();
       else syncJumpButton();
     });
+    // 上傳完成後本地 blob 會被釋放、訊息 id 也會換成正式 id，所以點擊時讀當下的屬性
     img.addEventListener('click', function () {
-      var full = meta.previewUrl || driveImageUrl(meta.fileId, 'w2400');
+      var blobUrl = img.getAttribute('data-blob') || '';
+      var fileId = img.getAttribute('data-file-id') || '';
+      var msgNode = img.closest('.msg');
+      var messageId = (msgNode && msgNode.getAttribute('data-id')) || message.id || '';
+      var full = blobUrl || driveImageUrl(fileId, 'w2400');
       openImageViewer({
-        url: full || src,
-        localBlobUrl: meta.previewUrl || '',
+        url: full || img.currentSrc || img.src,
+        localBlobUrl: blobUrl,
         conversationId: state.activeId || '',
-        messageId: message.id || '',
-        fileId: meta.fileId || ''
+        messageId: messageId,
+        fileId: fileId
       });
     });
     bubble.appendChild(img);
@@ -638,6 +644,7 @@ var PatsChat = (function () {
     }
     var url = driveImageUrl(meta.fileId, 'w640');
     if (url) {
+      img.setAttribute('data-file-id', meta.fileId);
       img.setAttribute('referrerpolicy', 'no-referrer');
       attachImageFallbacks(img, meta.fileId, 'w640');
       img.src = url;
