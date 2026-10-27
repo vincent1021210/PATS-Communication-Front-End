@@ -1,0 +1,50 @@
+# vincent1021210.github.io 的 robots.txt（網域根目錄，對 /PATS-Recommendation/ 也有效）
+# 歡迎搜尋引擎與 AI 搜尋爬蟲索引 PATS 的公開頁面。
+
+User-agent: *
+Allow: /
+Disallow: /apps-script/
+Disallow: /voip/
+Disallow: /tools/
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://vincent1021210.github.io/sitemap.xml
+Sitemap: https://vincent1021210.github.io/PATS-Recommendation/sitemap.xml

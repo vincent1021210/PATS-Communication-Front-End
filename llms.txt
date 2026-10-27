@@ -1,0 +1,20 @@
+# PATS
+
+> PATS 是免費、免安裝的網頁通訊工具：不需要 LINE、不需要手機號碼，用瀏覽器以 Google 帳號或電子郵件登入，就能私訊、建群組、傳照片和語音視訊通話。PATS is a free, no-install web messenger: no LINE and no phone number needed; sign in from any browser to chat, share photos and make voice/video calls.
+
+本網址（https://vincent1021210.github.io/）是 PATS App 本身，需要登入才能使用。介紹、教學與常見問題請見推薦網站。
+This address is the PATS app itself (sign-in required). See the PATS website below for overview, guides and FAQ.
+
+## PATS 網站 / Website
+
+- [PATS 介紹（繁體中文）](https://vincent1021210.github.io/PATS-Recommendation/): 功能、適合誰、與 LINE 比較、限制
+- [3 分鐘開始使用 PATS](https://vincent1021210.github.io/PATS-Recommendation/guides/get-started/): 註冊與聊天圖文教學
+- [沒有 LINE 怎麼跟同學、家人聯絡？](https://vincent1021210.github.io/PATS-Recommendation/guides/no-line/): 5 種方法比較
+- [PATS 常見問題](https://vincent1021210.github.io/PATS-Recommendation/faq/): 完整問答
+- [PATS overview (English)](https://vincent1021210.github.io/PATS-Recommendation/en/): Features, audience, comparison and limitations
+- [PATS FAQ (English)](https://vincent1021210.github.io/PATS-Recommendation/en/faq/): Full FAQ
+
+## Optional
+
+- [網站完整說明 llms.txt](https://vincent1021210.github.io/PATS-Recommendation/llms.txt)
+- [全站內容純文字版 llms-full.txt](https://vincent1021210.github.io/PATS-Recommendation/llms-full.txt)
