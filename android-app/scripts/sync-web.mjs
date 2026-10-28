@@ -57,6 +57,9 @@ function transformIndex(html) {
   if (!fontMatch) throw new Error('index.html 找不到 Material Symbols 的 <link>，請更新 sync-web.mjs');
 
   let out = html
+    // 拿掉 viewport-fit=cover：Capacitor 就會在 WebView 外圍留出狀態列與手勢列，
+    // 否則新版 WebView 會讓畫面延伸到狀態列底下，登入頁標題被時鐘蓋住
+    .replace(/,\s*viewport-fit=cover/, '')
     .replace(FONT_CSS_URL_RE, '<link rel="stylesheet" href="vendor/material-symbols.css">')
     .replace(/<script defer src="https:\/\/cdn\.socket\.io\/[^"]+"><\/script>/, '<script defer src="vendor/socket.io.min.js"></script>')
     .replace(/^\s*<link rel="canonical"[^>]*>\r?\n/m, '')
