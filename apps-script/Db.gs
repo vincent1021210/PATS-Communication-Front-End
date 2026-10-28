@@ -72,7 +72,11 @@ var SS_CACHE = null;
 var SHEET_CACHE = {};
 var ROW_CACHE = {};
 
-function invalidate_(name) { delete ROW_CACHE[name]; }
+/** 所有寫入都會經過這裡：清掉本次請求的列快取，並換掉跨請求快取的版本號（Cache.gs）。 */
+function invalidate_(name) {
+  delete ROW_CACHE[name];
+  bumpVersion_(name);
+}
 
 function openSpreadsheet_() {
   if (SS_CACHE) return SS_CACHE;
@@ -228,6 +232,7 @@ function dbDelete_(name, id) {
   if (!existing) return false;
   withLock_(function () { sheet_(name).deleteRow(existing._row); });
   invalidate_(name);
+  if (name === 'sessions') forgetSession_(id);
   return true;
 }
 

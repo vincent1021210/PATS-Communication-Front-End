@@ -12,6 +12,12 @@ var PatsChat = (function () {
 
   var POLL_INTERVAL_MS = 6000;
   var LIST_POLL_EVERY = 2;
+  var PAGE_SIZE = 50;
+  var OLDER_TRIGGER_PX = 120;
+
+  /* 目前對話的往上翻頁狀態；currentConv 是存進本機快取用的對話資訊 */
+  var older = { hasMore: false, loading: false };
+  var currentConv = null;
 
   var inbox = [];
   var listSignature = '';
@@ -218,6 +224,7 @@ var PatsChat = (function () {
     var pane = $('#chat-pane');
     pane.innerHTML = '';
     var conv = data.conversation;
+    currentConv = conv;
 
     var subtitle = conv.type === 'group'
       ? conv.memberCount + ' 位成員'
@@ -253,7 +260,7 @@ var PatsChat = (function () {
       ])
     ]));
 
-    var body = el('div', { class: 'chat-body scroll-y', id: 'chat-body' });
+    var body = el('div', { class: 'chat-body scroll-y', id: 'chat-body', 'data-conv': conv.id });
     pane.appendChild(body);
     thread = { day: '', sender: '' };
     renderMessages(body, data.messages, false);
@@ -276,6 +283,7 @@ var PatsChat = (function () {
         body.setAttribute('data-stick', near ? '1' : '0');
         if (near) scrollState.unseen = 0;
         syncJumpButton();
+        if (body.scrollTop < OLDER_TRIGGER_PX) loadOlder();
       });
     }, { passive: true });
 
@@ -746,13 +754,14 @@ var PatsChat = (function () {
     });
   }
 
-  function renderMessages(container, messages, appending) {
+  /** prepend 為 true 時是往上翻頁補舊訊息：不接手送出中的暫顯氣泡。 */
+  function renderMessages(container, messages, appending, prepend) {
     var lastDay = appending ? thread.day : '';
     var previousSender = appending ? thread.sender : '';
 
     messages.forEach(function (message) {
       if (messageNode(message.id)) return;
-      if (message.mine && adoptPending(message)) {
+      if (!prepend && message.mine && adoptPending(message)) {
         lastDay = PATS.formatDay(message.createdAt) || lastDay;
         previousSender = message.senderId;
         return;
@@ -766,7 +775,10 @@ var PatsChat = (function () {
       }
 
       if (message.kind === 'system') {
-        container.appendChild(el('div', { class: 'msg-system', text: message.body }));
+        container.appendChild(el('div', {
+          class: 'msg-system', text: message.body,
+          'data-id': message.id, 'data-at': message.createdAt
+        }));
         previousSender = '';
         return;
       }
@@ -789,6 +801,7 @@ var PatsChat = (function () {
           (message.pending ? ' is-pending' : '') +
           (isImageMessage(message) ? ' is-image-msg' : ''),
         'data-id': message.id,
+        'data-at': message.createdAt,
         'data-sender': message.senderId || '',
         'data-kind': isImageMessage(message) ? 'image' : (message.kind || 'text')
       }, [
@@ -879,6 +892,7 @@ var PatsChat = (function () {
     return el('div', {
       class: 'msg msg-call-invite' + (message.mine ? ' is-mine' : ''),
       'data-id': message.id,
+      'data-at': message.createdAt,
       'data-call-id': callId,
       'data-sender': message.senderId || ''
     }, [
@@ -980,6 +994,7 @@ var PatsChat = (function () {
         continue;
       }
       node.setAttribute('data-id', message.id);
+      node.setAttribute('data-at', message.createdAt);
       node.classList.remove('is-pending');
       var time = node.querySelector('.time');
       if (time) time.textContent = PATS.formatTime(message.createdAt);
@@ -1120,6 +1135,7 @@ var PatsChat = (function () {
       if (!state.activeId) renderPlaceholder();
     }
     PatsMain.updateBadges(inbox);
+    if (window.PatsCache && loadedScope === 'dm' && state.view === 'dm') PatsCache.saveList('dm', inbox);
 
     if (options && options.autoSelect && !state.activeId && list.length &&
         window.matchMedia('(min-width: 721px)').matches) {
@@ -1202,27 +1218,213 @@ var PatsChat = (function () {
     return null;
   }
 
+  /**
+   * 開對話：本機有快取就先畫，再向伺服器要最近 50 則（同一次請求順便標已讀）。
+   * 舊版後端回應沒有 ver，代表不認得 markRead 參數，改成另外呼叫一次。
+   */
   function openConversation(conversationId) {
-    state.activeId = conversationId;
-    state.lastMessageAt = null;
-    thread = { day: '', sender: '' };
+    resetThreadState_(conversationId);
     publishList();
     PatsMain.setMobilePane('chat');
 
-    return PATS.rpc('listMessages', { conversationId: conversationId })
+    var cached = window.PatsCache ? PatsCache.getThread(conversationId) : null;
+    if (cached) applyThread(cached, { fromCache: true });
+    else if (!isRendered_(conversationId)) renderThreadLoading_();
+
+    return PATS.rpc('listMessages', { conversationId: conversationId, limit: PAGE_SIZE, markRead: true })
       .then(function (data) {
         if (state.activeId !== conversationId) return;
-        state.activeType = data.conversation.type;
-        state.messages = data.messages;
-        state.lastMessageAt = data.messages.length
-          ? data.messages[data.messages.length - 1].createdAt
-          : null;
-        upsertInboxFromConversation_(data);
-        renderConversation(data);
-        return PATS.rpc('markRead', { conversationId: conversationId });
+        applyThread(data);
+        if (data.ver === undefined) return PATS.rpc('markRead', { conversationId: conversationId });
       })
       .then(function () { refreshBadgesOnly(); })
       .catch(handleError);
+  }
+
+  /** 換到別的對話才清掉游標；重點同一個對話時保留畫面，之後用合併的方式更新。 */
+  function resetThreadState_(conversationId) {
+    var same = isRendered_(conversationId);
+    state.activeId = conversationId;
+    if (window.PatsCache) PatsCache.setActive(state.view === 'dm' ? conversationId : null);
+    if (same) return;
+    state.lastMessageAt = null;
+    state.msgVer = null;
+    state.messages = [];
+    thread = { day: '', sender: '' };
+    older = { hasMore: false, loading: false };
+    currentConv = null;
+  }
+
+  function isRendered_(conversationId) {
+    var body = $('#chat-body');
+    return !!(body && body.getAttribute('data-conv') === conversationId);
+  }
+
+  function renderThreadLoading_() {
+    var pane = $('#chat-pane');
+    pane.innerHTML = '';
+    pane.appendChild(el('div', { class: 'chat-loading', text: '載入對話中…' }));
+  }
+
+  /**
+   * 把一份對話資料（快取或伺服器）放上畫面。
+   * 畫面已是同一個對話且內容銜接得上時，只補新的訊息，不重畫，
+   * 這樣先畫快取、再收到伺服器資料時不會閃一下、捲動位置與輸入框也不會被清掉。
+   */
+  function applyThread(data, options) {
+    options = options || {};
+    var conv = data.conversation;
+    var messages = data.messages || [];
+    state.activeType = conv.type;
+
+    var body = $('#chat-body');
+    var rendered = isRendered_(conv.id);
+    if (rendered && canMerge_(body, messages)) {
+      currentConv = conv;
+      appendMessages(messages);
+      older.hasMore = older.hasMore || !!data.hasMore;
+    } else {
+      var input = rendered ? $('#composer-input') : null;
+      var draft = input ? input.value : '';
+      renderConversation(data);
+      state.messages = messages.slice();
+      state.lastMessageAt = messages.length ? messages[messages.length - 1].createdAt : null;
+      older = { hasMore: !!data.hasMore, loading: false };
+      if (draft) {
+        var fresh = $('#composer-input');
+        fresh.value = draft;
+        fresh.dispatchEvent(new Event('input'));
+      }
+    }
+
+    if (!options.fromCache) {
+      state.msgVer = data.ver || null;
+      persistThread_();
+    }
+    upsertInboxFromConversation_(data);
+    fillIfShort_();
+  }
+
+  /** 已畫出的訊息跟新資料有重疊、且重疊區間內沒有被刪掉的訊息，才能直接補。 */
+  function canMerge_(body, messages) {
+    if (!messages.length) return false;
+    var nodes = body.querySelectorAll('[data-at]');
+    if (!nodes.length) return false;
+    var firstAt = Date.parse(messages[0].createdAt);
+    var lastShown = Date.parse(nodes[nodes.length - 1].getAttribute('data-at'));
+    if (lastShown < firstAt) return false;
+    var ids = {};
+    messages.forEach(function (m) { ids[m.id] = true; });
+    for (var i = 0; i < nodes.length; i++) {
+      var id = nodes[i].getAttribute('data-id') || '';
+      if (id.indexOf('pending-') === 0) continue;
+      if (Date.parse(nodes[i].getAttribute('data-at')) >= firstAt && !ids[id]) return false;
+    }
+    return true;
+  }
+
+  function persistThread_() {
+    if (!window.PatsCache || !currentConv || currentConv.id !== state.activeId) return;
+    PatsCache.saveThread(currentConv, state.messages, older.hasMore);
+  }
+
+  /** 訊息太少撐不出捲軸時，使用者沒辦法往上捲，直接先補一頁。 */
+  function fillIfShort_() {
+    requestAnimationFrame(function () {
+      var body = $('#chat-body');
+      if (body && older.hasMore && body.scrollHeight <= body.clientHeight + OLDER_TRIGGER_PX) loadOlder();
+    });
+  }
+
+  /** 捲到頂端時載入更早的 50 則，插在最上面並維持目前看到的位置。 */
+  function loadOlder() {
+    var body = $('#chat-body');
+    var conversationId = state.activeId;
+    if (!body || !conversationId || older.loading || !older.hasMore) return;
+    var oldest = body.querySelector('[data-at]');
+    if (!oldest) return;
+
+    older.loading = true;
+    var hint = el('div', { class: 'msg-older', text: '載入更早的訊息…' });
+    body.insertBefore(hint, body.firstChild);
+
+    PATS.rpc('listMessages', {
+      conversationId: conversationId,
+      limit: PAGE_SIZE,
+      before: oldest.getAttribute('data-at')
+    })
+      .then(function (data) {
+        if (state.activeId !== conversationId || $('#chat-body') !== body) return;
+        var list = (data && data.messages) || [];
+        // 舊版後端不認得 before，會回傳整段對話；交給 prependMessages 去重後就不用再翻
+        older.hasMore = !!data && data.ver !== undefined && !!data.hasMore && list.length > 0;
+        prependMessages(body, list);
+        state.messages = list.concat(state.messages);
+        persistThread_();
+      })
+      .catch(function () { /* 下次捲到頂端再試 */ })
+      .then(function () {
+        hint.remove();
+        older.loading = false;
+        if ($('#chat-body') === body) fillIfShort_();
+      });
+  }
+
+  function prependMessages(body, messages) {
+    var fresh = messages.filter(function (m) { return !messageNode(m.id); });
+    if (!fresh.length) return;
+
+    var saved = thread;
+    thread = { day: '', sender: '' };
+    var holder = document.createElement('div');
+    renderMessages(holder, fresh, false, true);
+    var lastDay = thread.day;
+    thread = saved;
+
+    // 新補進來的最後一天跟原本最上面的日期相同時，拿掉重複的日期分隔
+    var first = body.firstElementChild;
+    while (first && first.classList.contains('msg-older')) first = first.nextElementSibling;
+    if (first && first.classList.contains('msg-day') && first.textContent === lastDay) first.remove();
+
+    var prevHeight = body.scrollHeight;
+    var prevTop = body.scrollTop;
+    var anchor = body.firstChild;
+    while (anchor && anchor.classList && anchor.classList.contains('msg-older')) anchor = anchor.nextSibling;
+    while (holder.firstChild) body.insertBefore(holder.firstChild, anchor);
+    body.scrollTop = prevTop + (body.scrollHeight - prevHeight);
+  }
+
+  /**
+   * 開網頁時用快取或 bootstrap 的資料直接畫列表與對話，不另外打 listConversations。
+   * data: { list, thread, fromCache, missingId }
+   */
+  function hydrate(data) {
+    data = data || {};
+    loadedScope = 'dm';
+    var keptActive = findInboxRow_(state.activeId);
+    inbox = (data.list || []).slice();
+
+    var t = data.thread;
+    if (t && t.conversation && (!state.activeId || state.activeId === t.conversation.id)) {
+      if (state.activeId !== t.conversation.id) {
+        resetThreadState_(t.conversation.id);
+        PatsMain.setMobilePane('chat');
+      }
+      listSignature = '';
+      applyThread(t, { fromCache: data.fromCache });
+      if (!data.fromCache) refreshBadgesOnly();
+      return;
+    }
+
+    if (data.missingId && state.activeId === data.missingId) {
+      state.activeId = null;
+      renderPlaceholder();
+      PatsMain.setMobilePane('list');
+    } else if (keptActive && !findInboxRow_(keptActive.id)) {
+      inbox.unshift(keptActive);
+    }
+    listSignature = '';
+    return publishList({ autoSelect: !data.fromCache });
   }
 
   /** 後端列表漏掉時，用已開啟的對話補進左側，避免「右邊有人、左邊沒朋友」。 */
@@ -1427,7 +1629,10 @@ var PatsChat = (function () {
       var time = pending.querySelector('.time');
       if (time) time.textContent = PATS.formatTime(message.createdAt);
       if (isImageMessage(message)) applyImageToPendingNode(pending, message);
+      pending.setAttribute('data-at', message.createdAt);
       syncThreadCursor();
+      state.messages = (state.messages || []).concat([message]);
+      persistThread_();
     } else {
       appendMessages([message]);
     }
@@ -1480,6 +1685,8 @@ var PatsChat = (function () {
     renderMessages(body, fresh, true);
     if (!options.optimistic) {
       state.lastMessageAt = fresh[fresh.length - 1].createdAt;
+      state.messages = (state.messages || []).concat(fresh);
+      persistThread_();
     }
     if (wasNear || hasMine || options.forceScroll || options.optimistic) {
       scrollToBottom();
@@ -1515,15 +1722,20 @@ var PatsChat = (function () {
     var jobs = [];
     var conversationId = state.activeId;
 
-    if (conversationId) {
-      var payload = { conversationId: conversationId };
+    // 對話還在載入（畫面不是這個對話）時先不輪詢訊息，避免塞進別的對話畫面
+    if (conversationId && isRendered_(conversationId)) {
+      // 帶上次的 ver：伺服器那邊訊息沒變就直接回空，不必讀試算表
+      var payload = { conversationId: conversationId, markRead: true };
       if (state.lastMessageAt) payload.since = state.lastMessageAt;
+      if (state.lastMessageAt && state.msgVer) payload.ver = state.msgVer;
       jobs.push(
         PATS.rpc('listMessages', payload)
           .then(function (data) {
-            if (state.activeId !== conversationId || !data || !data.messages || !data.messages.length) return;
+            if (state.activeId !== conversationId || !data) return;
+            if (data.ver) state.msgVer = data.ver;
+            if (!data.messages || !data.messages.length || !isRendered_(conversationId)) return;
             appendMessages(data.messages);
-            return PATS.rpc('markRead', { conversationId: conversationId });
+            if (data.ver === undefined) return PATS.rpc('markRead', { conversationId: conversationId });
           })
           .catch(function () { /* 輪詢錯誤不打擾使用者 */ })
       );
@@ -1539,11 +1751,12 @@ var PatsChat = (function () {
     });
   }
 
-  function startPolling() {
+  /** options.immediate：畫面上的資料可能是舊的（例如只有快取），馬上抓一次。 */
+  function startPolling(options) {
     stopPolling();
     polling = true;
     pollTick = 0;
-    schedulePoll(POLL_INTERVAL_MS);
+    schedulePoll(options && options.immediate ? 0 : POLL_INTERVAL_MS);
   }
 
   function stopPolling() {
@@ -1699,6 +1912,7 @@ var PatsChat = (function () {
     refreshList: refreshList,
     renderPlaceholder: renderPlaceholder,
     openConversation: openConversation,
+    hydrate: hydrate,
     startPolling: startPolling,
     stopPolling: stopPolling,
     handleError: handleError

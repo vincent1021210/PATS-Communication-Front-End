@@ -37,7 +37,11 @@ function doPost(e) {
 }
 
 function handleRequest_(action, payload, token) {
-  return json_(apiCall_(action, payload, token));
+  var started = Date.now();
+  var result = apiCall_(action, payload, token);
+  // 伺服器端處理時間，前端 ?perf=1 時會印出來比對網路往返
+  result.ms = Date.now() - started;
+  return json_(result);
 }
 
 function json_(value) {

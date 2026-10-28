@@ -32,6 +32,8 @@ var PATS = (function () {
       if (token) window.localStorage.setItem(TOKEN_KEY, token);
       else window.localStorage.removeItem(TOKEN_KEY);
     } catch (e) { /* 無痕模式等情況忽略 */ }
+    // 登出或權杖失效時，連同本機的對話快取一起清掉（共用電腦不留下聊天內容）
+    if (!token && window.PatsCache) window.PatsCache.clearAll();
     state.token = token;
   }
 
@@ -167,15 +169,49 @@ var PATS = (function () {
       });
   }
 
-  function rpc(action, payload) {
+  /* ------------------------------------------------------------ 效能量測 */
+
+  // 網址帶 ?perf=1 開啟，之後同一分頁持續有效；?perf=0 關閉
+  var PERF_KEY = 'pats-perf';
+  var perfOn = (function () {
+    try {
+      var flag = new URL(window.location.href).searchParams.get('perf');
+      if (flag === '1') sessionStorage.setItem(PERF_KEY, '1');
+      if (flag === '0') sessionStorage.removeItem(PERF_KEY);
+      return sessionStorage.getItem(PERF_KEY) === '1';
+    } catch (e) { return false; }
+  })();
+  var perfMarked = {};
+
+  function nowMs() {
+    return window.performance && performance.now ? performance.now() : Date.now();
+  }
+
+  /** 記錄開啟網頁後第一次到達某個里程碑的時間（每個標籤只記一次） */
+  function perfMark(label) {
+    if (!perfOn || perfMarked[label]) return;
+    perfMarked[label] = true;
+    console.info('[perf] ' + label + '：開啟後 ' + Math.round(nowMs()) + 'ms');
+  }
+
+  /* ----------------------------------------------------------- 呼叫後端 */
+
+  var RPC_TIMEOUT_MS = 20000;
+  // 只重試讀取類操作；寫入類（送訊息等）重送可能造成重複
+  var RETRY_ACTIONS = { bootstrap: 1, session: 1, listConversations: 1, listMessages: 1 };
+
+  function rpcOnce(action, payload) {
     var url = state.config.apiUrl;
-    if (!url) return Promise.reject(fail('NO_API_URL'));
+    var started = nowMs();
+    var controller = window.AbortController ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, RPC_TIMEOUT_MS) : null;
 
     return fetch(url, {
       method: 'POST',
       mode: 'cors',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      signal: controller ? controller.signal : undefined,
       body: JSON.stringify({
         action: action,
         payload: payload || {},
@@ -193,6 +229,10 @@ var PATS = (function () {
         } catch (err) {
           throw fail('BAD_RESPONSE');
         }
+        if (perfOn) {
+          console.info('[perf] rpc ' + action + '：' + Math.round(nowMs() - started) + 'ms' +
+            (result && result.ms !== undefined ? '（伺服器 ' + result.ms + 'ms）' : ''));
+        }
         if (result && result.ok) return result.data;
         if (result && result.error === 'UNKNOWN_ACTION') checkForUpdate('stale-backend');
         throw fail((result && result.error) || 'UNKNOWN_ERROR');
@@ -200,7 +240,18 @@ var PATS = (function () {
       .catch(function (err) {
         if (err && err.code) throw err;
         throw fail('NETWORK');
+      })
+      .finally(function () {
+        if (timer) clearTimeout(timer);
       });
+  }
+
+  function rpc(action, payload) {
+    if (!state.config.apiUrl) return Promise.reject(fail('NO_API_URL'));
+    return rpcOnce(action, payload).catch(function (err) {
+      if (!RETRY_ACTIONS[action] || err.code !== 'NETWORK') throw err;
+      return rpcOnce(action, payload);
+    });
   }
 
   /* --------------------------------------------------------- DOM 小工具 */
@@ -434,6 +485,7 @@ var PATS = (function () {
     formatDay: formatDay, formatBytes: formatBytes,
     toast: toast, openModal: openModal, closeModal: closeModal,
     openMenu: openMenu, closeMenu: closeMenu,
-    checkForUpdate: checkForUpdate, cleanVersionParams: cleanVersionParams
+    checkForUpdate: checkForUpdate, cleanVersionParams: cleanVersionParams,
+    perfMark: perfMark
   };
 })();

@@ -41,15 +41,104 @@ var PatsMain = (function () {
     if (!token) return showAuth();
 
     state.token = token;
-    PATS.rpc('session', { token: token })
+    PATS.perfMark('boot');
+
+    // 有上次的快取就先畫出來，不必等伺服器（Apps Script 一次往返要 1～3 秒）
+    var cached = window.PatsCache ? PatsCache.load() : null;
+    var fromCache = false;
+    if (cached && cached.user && cached.user.canChat !== false) {
+      var lastId = isDesktop() ? cached.activeId : null;
+      enterApp(cached.user, {
+        prefetched: {
+          list: cached.lists.dm || [],
+          thread: lastId ? PatsCache.getThread(lastId) : null,
+          fromCache: true
+        },
+        deferPolling: true
+      });
+      fromCache = true;
+      PATS.perfMark('cache-painted');
+    }
+
+    var wantId = fromCache ? state.activeId : (isDesktop() && cached ? cached.activeId : null);
+    PATS.rpc('bootstrap', {
+      withData: true,
+      conversationId: wantId || '',
+      autoSelect: isDesktop(),
+      limit: 50
+    })
       .then(function (result) {
-        if (!result) return showAuth();
-        enterApp(result.user);
+        PATS.perfMark('bootstrap');
+        if (!result || !result.user) return legacyBoot(token, fromCache);
+        // 舊版後端的 bootstrap 不認得 withData，只回 user：改走原本的流程
+        if (result.user.canChat !== false && !result.conversations) {
+          return enterApp(result.user);
+        }
+        applyBootstrap(result, fromCache, wantId);
       })
       .catch(function (err) {
+        if (err.code === 'UNKNOWN_ACTION') return legacyBoot(token, fromCache);
+        if (err.code === 'AUTH_REQUIRED') {
+          PATS.writeToken(null);
+          state.user = null;
+          showAuth();
+          PATS.toast(err.message);
+          return;
+        }
+        if (fromCache) {
+          // 先留著快取畫面，輪詢會在網路恢復後自動補上新資料
+          PATS.toast('目前連不上伺服器，先顯示上次的資料。', 'error');
+          PatsChat.startPolling({ immediate: true });
+          return;
+        }
         showAuth();
         if (err.code === 'NETWORK' || err.code === 'BAD_RESPONSE') PatsAuth.showError(err.message);
       });
+  }
+
+  /** 後端還沒更新、沒有 bootstrap 時的舊流程。 */
+  function legacyBoot(token, fromCache) {
+    return PATS.rpc('session', { token: token })
+      .then(function (result) {
+        if (!result) {
+          PATS.writeToken(null);
+          return showAuth();
+        }
+        enterApp(result.user);
+      })
+      .catch(function (err) {
+        if (fromCache && err.code !== 'AUTH_REQUIRED') return PatsChat.startPolling({ immediate: true });
+        showAuth();
+        if (err.code === 'NETWORK' || err.code === 'BAD_RESPONSE') PatsAuth.showError(err.message);
+      });
+  }
+
+  /** bootstrap 回來：快取畫面已在就原地更新，否則正式進入。 */
+  function applyBootstrap(result, fromCache, wantId) {
+    var user = result.user;
+    var prefetched = {
+      list: result.conversations || [],
+      thread: result.thread || null,
+      // 要了這個對話卻沒拿到：多半已被刪除或移出群組
+      missingId: result.thread ? '' : (wantId || ''),
+      ver: result.ver || null
+    };
+    var sameUser = fromCache && state.user && state.user.id === user.id;
+    if (!sameUser || user.canChat === false) {
+      if (fromCache && window.PatsCache) PatsCache.clearAll();
+      return enterApp(user, { prefetched: user.canChat === false ? null : prefetched });
+    }
+    state.user = user;
+    if (window.PatsCache) PatsCache.saveUser(user);
+    renderIdentity();
+    applyRole(user);
+    // 等待期間使用者切到別的頁就不覆蓋，回到私訊頁時會自己重抓
+    if (state.view === 'dm') PatsChat.hydrate(prefetched);
+    PatsChat.startPolling();
+  }
+
+  function isDesktop() {
+    return window.matchMedia('(min-width: 721px)').matches;
   }
 
   function showAuth() {
@@ -61,8 +150,14 @@ var PatsMain = (function () {
     PatsAuth.showLoginPanel();
   }
 
-  function enterApp(user) {
+  /**
+   * options.prefetched  已有列表／對話資料（快取或 bootstrap），不用再打 listConversations
+   * options.deferPolling 只畫了快取，等 bootstrap 回來才開始輪詢
+   */
+  function enterApp(user, options) {
+    options = options || {};
     state.user = user;
+    if (window.PatsCache) PatsCache.saveUser(user);
     state.activeId = null;
     state.keyword = '';
     $('#list-search').value = '';
@@ -79,8 +174,8 @@ var PatsMain = (function () {
       setView('guardian');
       return;
     }
-    setView('dm', { autoSelect: true });
-    PatsChat.startPolling();
+    setView('dm', { autoSelect: true, prefetched: options.prefetched });
+    if (!options.deferPolling) PatsChat.startPolling();
     if (window.PatsCall) {
       PatsCall.connect(user);
       paintSignalBadge();
@@ -205,6 +300,10 @@ var PatsMain = (function () {
     $('#list-search').value = '';
     PatsChat.renderPlaceholder();
     setMobilePane('list');
+    if (options && options.prefetched && view === 'dm') {
+      PatsChat.hydrate(options.prefetched);
+      return;
+    }
     PatsChat.refreshList({ autoSelect: options && options.autoSelect });
   }
 
@@ -275,10 +374,12 @@ var PatsMain = (function () {
     else desktop.addListener(handler);
   }
 
+  // 一定要等這個 IIFE 回傳、PatsMain 有值之後才 boot：
+  // 用 defer 載入時 readyState 已不是 loading，直接呼叫會在 PatsMain 還是 undefined 時就畫快取
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
   } else {
-    boot();
+    setTimeout(boot, 0);
   }
 
   return {

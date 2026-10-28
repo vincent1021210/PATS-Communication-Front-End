@@ -57,13 +57,14 @@ function createSession_(userId, remember) {
 
 function resolveSession_(token) {
   if (!token) return null;
-  var session = dbFind_('sessions', function (s) { return s.token === token; });
+  // 每個請求都會走到這裡；快取命中時完全不讀 sessions／users 表（見 Cache.gs）
+  var session = cachedSession_(token);
   if (!session) return null;
   if (new Date(session.expiresAt).getTime() < Date.now()) {
-    dbDelete_('sessions', session.token);
+    dbDelete_('sessions', token);
     return null;
   }
-  var user = dbGet_('users', session.userId);
+  var user = cachedUser_(session.userId);
   if (!user || user.status === 'disabled') return null;
   return user;
 }

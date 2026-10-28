@@ -75,13 +75,45 @@ function conversationAvatar_(conv, participants, users, meId) {
 
 /* -------------------------------------------------------------- 啟動載入 */
 
-function apiBootstrap_(user) {
+/**
+ * 開啟網頁時一次拿齊：使用者、私訊列表、要顯示的那個對話的最近訊息。
+ * 原本要依序打 session → listConversations → listMessages → markRead 四次，
+ * 每次 Apps Script 往返都要 1～3 秒；合併後同一次請求內整張表也只讀一次。
+ *
+ * payload.withData 沒帶時維持舊格式（只回 user），舊前端不受影響。
+ *   conversationId  優先開這個對話（上次開過的）；不是成員就忽略
+ *   autoSelect      沒指定時改開列表第一個
+ *   limit           訊息則數，預設 50
+ */
+function apiBootstrap_(user, payload) {
   requireApiContext_(user);
-  return {
+  payload = payload || {};
+  var out = {
     user: publicUser_(user),
     serverTime: nowIso_(),
     googleClientId: googleClientId_()
   };
+  if (!payload.withData || roleOf_(user) === 'parent') return out;
+
+  out.conversations = apiListConversations_(user, { scope: 'dm' });
+
+  var targetId = payload.conversationId || '';
+  if (!targetId && payload.autoSelect && out.conversations.length) targetId = out.conversations[0].id;
+  out.thread = null;
+  if (targetId) {
+    try {
+      out.thread = apiListMessages_(user, {
+        conversationId: targetId,
+        limit: payload.limit || 50,
+        markRead: true
+      });
+    } catch (err) {
+      // 上次開的對話已不存在或被移出群組：只回列表，前端改顯示空白
+      out.thread = null;
+    }
+  }
+  out.ver = tableVersion_('messages');
+  return out;
 }
 
 /* -------------------------------------------------------------- 對話列表 */
@@ -95,6 +127,24 @@ function apiListConversations_(user, payload) {
   payload = payload || {};
   applyAutoArchive_(user);
 
+  var scope = payload.scope || 'dm';
+  var keyword = String(payload.q || '').trim().toLowerCase();
+
+  // 先取版本號再讀表：讀表途中有人寫入時，存下的快取掛在舊版本號上，下一輪自然重算
+  var cacheKey = '';
+  if (!keyword) {
+    var v = tableVersions_(['users', 'conversations', 'participants', 'messages']);
+    cacheKey = 'list:' + user.id + ':' + scope + ':' + v.users + v.conversations + v.participants + v.messages;
+    var hit = cacheGet_(cacheKey);
+    if (hit) return hit;
+  }
+
+  var list = buildConversationList_(user, scope, keyword);
+  if (cacheKey) cachePut_(cacheKey, list, VER_TTL_S);
+  return list;
+}
+
+function buildConversationList_(user, scope, keyword) {
   var users = userMap_();
   var mine = myParticipations_(user.id);
   var byConv = {};
@@ -107,8 +157,6 @@ function apiListConversations_(user, payload) {
   });
 
   var indexed = indexMessages_(liveMessages_());
-  var scope = payload.scope || 'dm';
-  var keyword = String(payload.q || '').trim().toLowerCase();
 
   var list = dbAll_('conversations')
     .filter(function (conv) { return !!byConv[conv.id]; })
@@ -222,13 +270,32 @@ function countUnreadBucket_(bucket, userId, lastReadAt) {
 
 /* ------------------------------------------------------------------ 訊息 */
 
+var MESSAGE_PAGE_MAX = 200;
+
+/**
+ * 參數（皆為選填，舊前端不帶時行為不變）：
+ *   since    只回傳這個時間之後的訊息（輪詢用）
+ *   ver      上次拿到的 messages 版本號；搭配 since 且版本沒變時直接回空陣列，不讀試算表
+ *   limit    只回傳最後 N 則，並附 hasMore
+ *   before   只回傳這個時間之前的訊息（往上載入更早訊息用）
+ *   markRead 順便把這個對話標成已讀，省一次往返
+ */
 function apiListMessages_(user, payload) {
   requireApiContext_(user);
   denyParent_(user);
   var conversationId = payload.conversationId;
-  assertMember_(user.id, conversationId);
+  var ver = tableVersion_('messages');
+  if (payload.since && payload.ver && String(payload.ver) === ver) {
+    return { messages: [], ver: ver, unchanged: true };
+  }
+
+  var me = assertMember_(user.id, conversationId);
   var users = userMap_();
   var since = payload.since ? timeMs_(payload.since) : 0;
+  var before = payload.before ? timeMs_(payload.before) : 0;
+  var limit = Math.min(Math.max(Number(payload.limit) || 0, 0), MESSAGE_PAGE_MAX);
+  var lastReadAt = me.lastReadAt ? timeMs_(me.lastReadAt) : 0;
+  var hasUnread = false;
   var pending = [];
   var all = dbAll_('messages');
   for (var i = 0; i < all.length; i++) {
@@ -236,10 +303,23 @@ function apiListMessages_(user, payload) {
     if (raw.conversationId !== conversationId) continue;
     if (String(raw.deleted) === 'true' || raw.deleted === true) continue;
     var at = timeMs_(raw.createdAt);
+    if (raw.senderId !== user.id && at > lastReadAt) hasUnread = true;
     if (at <= since) continue;
+    if (before && at >= before) continue;
     pending.push({ m: raw, t: at });
   }
   pending.sort(function (a, b) { return a.t - b.t; });
+
+  var hasMore = false;
+  if (limit && pending.length > limit) {
+    hasMore = true;
+    pending = pending.slice(pending.length - limit);
+  }
+
+  // 已經是最新就不寫，避免每次開對話都搶寫入鎖
+  if (payload.markRead && hasUnread) {
+    dbUpdate_('participants', me.id, { lastReadAt: nowIso_() });
+  }
 
   var rows = pending.map(function (row) {
     var m = row.m;
@@ -256,8 +336,8 @@ function apiListMessages_(user, payload) {
     };
   });
 
-  // 輪詢只補新訊息，不必再組一次成員名單。
-  if (payload.since) return { messages: rows };
+  // 輪詢與往上翻頁只補訊息，不必再組一次成員名單。
+  if (payload.since || payload.before) return { messages: rows, ver: ver, hasMore: hasMore };
 
   var conv = dbGet_('conversations', conversationId);
   if (!conv) throw new Error('CONVERSATION_NOT_FOUND');
@@ -279,7 +359,9 @@ function apiListMessages_(user, payload) {
         return { id: p.userId, name: u.displayName || u.username, avatarUrl: u.avatarUrl || '', role: p.role };
       })
     },
-    messages: rows
+    messages: rows,
+    ver: ver,
+    hasMore: hasMore
   };
 }
 
@@ -806,7 +888,8 @@ function apiUpdateSettings_(user, payload) {
 /** 「清除快取資料」：只丟掉伺服器端快取，不動訊息本體。 */
 function apiClearCache_(user) {
   requireApiContext_(user);
-  CacheService.getScriptCache().removeAll(['conversations:' + user.id, 'messages:' + user.id]);
+  // 換掉所有版本號，列表與訊息的快取下一次請求就會重讀試算表
+  Object.keys(VERSIONED_TABLES).forEach(function (name) { bumpVersion_(name); });
   return true;
 }
 
