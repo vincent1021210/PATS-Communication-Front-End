@@ -420,7 +420,8 @@ var PatsAuth = (function () {
     clearError();
     nativeGoogleReady
       .then(function () {
-        return social.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
+        // 不可傳 scopes：外掛會要求改 MainActivity；ID Token 預設已含 email 與 profile
+        return social.login({ provider: 'google', options: {} });
       })
       .then(function (res) {
         var idToken = res && res.result && res.result.idToken;
