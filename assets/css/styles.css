@@ -296,6 +296,8 @@ textarea.input {
    我們只負責讓它水平置中並撐滿卡片寬度。 */
 .google-slot { display: flex; justify-content: center; min-height: 42px; }
 .google-slot > div { width: 100%; }
+/* Android APP 用系統登入，按鈕由我們自己畫 */
+.google-slot > .btn-google-native { width: 100%; min-height: 42px; }
 
 .auth-hint {
   margin: 0; padding: 10px 12px;

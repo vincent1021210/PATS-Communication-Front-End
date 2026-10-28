@@ -61,7 +61,11 @@ if (/\uFFFD/.test(html)) {
 }
 
 fs.writeFileSync(indexPath, html, 'utf8');
-fs.writeFileSync(versionPath, JSON.stringify({ build: version }) + '\n', 'utf8');
+// 保留 androidMin 等其他欄位（Android APP 用來判斷是否要強制更新）
+let versionInfo = {};
+try { versionInfo = JSON.parse(fs.readFileSync(versionPath, 'utf8')); } catch (e) { /* 第一次建立 */ }
+versionInfo.build = version;
+fs.writeFileSync(versionPath, JSON.stringify(versionInfo) + '\n', 'utf8');
 
 let bad = false;
 for (const f of checkFiles) {

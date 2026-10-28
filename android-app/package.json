@@ -1,0 +1,28 @@
+{
+  "name": "pats-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PATS Android APP：把網頁前端打包進 APK，資料仍由 Apps Script 雲端提供",
+  "scripts": {
+    "sync": "node scripts/sync-web.mjs && npx cap sync android",
+    "open": "npx cap open android",
+    "build:debug": "npm run sync && cd android && gradlew.bat assembleDebug",
+    "build:release": "npm run sync && cd android && gradlew.bat assembleRelease",
+    "icons": "npx @capacitor/assets generate --android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/status-bar": "^8.0.4",
+    "@capgo/capacitor-social-login": "^8.7.5"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.3",
+    "socket.io-client": "^4.8.1"
+  }
+}

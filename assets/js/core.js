@@ -141,7 +141,58 @@ var PATS = (function () {
     } catch (e) { /* ignore */ }
   }
 
+  /* ---------------------------------------------------- Android APP 專用 */
+
+  // 畫面打包在 APK 裡（Capacitor），沒有「重新整理拿新版」這回事，
+  // 改成比對雲端 version.json 的 androidMin，APP 太舊就請使用者下載新版。
+  var isNativeApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' &&
+    window.Capacitor.isNativePlatform());
+  var APP_VERSION_URL = 'https://vincent1021210.github.io/version.json';
+  var APP_DOWNLOAD_URL = 'https://vincent1021210.github.io/download/PATS.apk';
+  var APP_CHECK_GAP_MS = 60 * 60 * 1000;
+  var appCheckedAt = 0;
+  var appUpdatePrompted = false;
+
+  function nativePlugin(name) {
+    if (!isNativeApp || !window.Capacitor.Plugins) return null;
+    return window.Capacitor.Plugins[name] || null;
+  }
+
+  /** 外部網址一律交給系統瀏覽器，不在 APP 裡跳離聊天畫面。 */
+  function openExternal(url) {
+    var browser = nativePlugin('Browser');
+    if (browser) return browser.open({ url: url });
+    window.open(url, '_blank', 'noopener');
+  }
+
+  function checkAppVersion() {
+    var app = nativePlugin('App');
+    if (!app || appUpdatePrompted || Date.now() - appCheckedAt < APP_CHECK_GAP_MS) return Promise.resolve(false);
+    appCheckedAt = Date.now();
+    return Promise.all([
+      app.getInfo(),
+      fetch(APP_VERSION_URL + '?t=' + Date.now(), { cache: 'no-store' })
+        .then(function (res) { return res.ok ? res.json() : null; })
+    ])
+      .then(function (results) {
+        var info = results[0] || {};
+        var remote = results[1] || {};
+        var min = Number(remote.androidMin || 0);
+        if (!min || Number(info.build || 0) >= min) return false;
+        appUpdatePrompted = true;
+        openModal({
+          title: '請更新 PATS APP',
+          lead: '目前安裝的版本（' + (info.version || info.build) + '）太舊，部分功能可能無法使用。請下載並安裝新版，聊天紀錄不會遺失。',
+          confirmText: '前往下載',
+          onSubmit: function () { openExternal(remote.androidUrl || APP_DOWNLOAD_URL); }
+        });
+        return true;
+      })
+      .catch(function () { return false; });
+  }
+
   function checkForUpdate(reason) {
+    if (isNativeApp) return checkAppVersion(reason);
     if (updateRunning || !window.fetch) return Promise.resolve(false);
     var mine = currentBuild();
     if (!mine) return Promise.resolve(false);
@@ -472,6 +523,23 @@ var PATS = (function () {
     if (event.key === 'Escape') { closeModal(); closeMenu(); }
   });
 
+  if (isNativeApp) {
+    // APP 裡點到 http(s) 連結（訊息網址、推薦網站等）一律開系統瀏覽器，
+    // 否則 WebView 會直接換頁，回不到聊天畫面
+    document.addEventListener('click', function (event) {
+      var link = event.target.closest && event.target.closest('a[href]');
+      if (!link) return;
+      var href = link.getAttribute('href') || '';
+      if (!/^https?:\/\//i.test(href)) return;
+      event.preventDefault();
+      openExternal(href);
+    }, true);
+
+    var statusBar = nativePlugin('StatusBar');
+    if (statusBar) statusBar.setStyle({ style: 'LIGHT' }).catch(function () { /* 舊版 Android 不支援 */ });
+    document.documentElement.classList.add('is-native-app');
+  }
+
   return {
     state: state,
     rpc: rpc,
@@ -486,6 +554,7 @@ var PATS = (function () {
     toast: toast, openModal: openModal, closeModal: closeModal,
     openMenu: openMenu, closeMenu: closeMenu,
     checkForUpdate: checkForUpdate, cleanVersionParams: cleanVersionParams,
-    perfMark: perfMark
+    perfMark: perfMark,
+    isNativeApp: isNativeApp, nativePlugin: nativePlugin, openExternal: openExternal
   };
 })();

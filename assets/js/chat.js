@@ -441,6 +441,7 @@ var PatsChat = (function () {
 
   function saveImageBlob(blob, fileName) {
     fileName = fileName || defaultImageFileName();
+    if (PATS.isNativeApp) return saveImageNative(blob, fileName);
     var mime = blob.type || 'image/jpeg';
     var file;
     try {
@@ -462,6 +463,37 @@ var PatsChat = (function () {
       } catch (e2) { /* fall through */ }
     }
     return fallbackDownloadBlob(blob, fileName);
+  }
+
+  /**
+   * Android APP 的 WebView 不支援 Web Share，也不會處理 blob 下載：
+   * 先寫進 APP 的快取資料夾，再叫出系統分享選單（可存到相簿、傳給別人）。
+   */
+  function saveImageNative(blob, fileName) {
+    var fs = PATS.nativePlugin('Filesystem');
+    var share = PATS.nativePlugin('Share');
+    if (!fs || !share) return Promise.reject(new Error('請更新 APP 後再下載圖片。'));
+    return blobToBase64(blob)
+      .then(function (data) {
+        return fs.writeFile({ path: fileName, data: data, directory: 'CACHE' });
+      })
+      .then(function (written) {
+        return share.share({ title: fileName, files: [written.uri] });
+      })
+      .catch(function (err) {
+        // 使用者自己關掉分享選單不算錯誤
+        if (err && /cancel/i.test(String(err.message || err))) return;
+        throw err;
+      });
+  }
+
+  function blobToBase64(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result).split(',')[1] || ''); };
+      reader.onerror = function () { reject(reader.error); };
+      reader.readAsDataURL(blob);
+    });
   }
 
   function fallbackDownloadBlob(blob, fileName) {

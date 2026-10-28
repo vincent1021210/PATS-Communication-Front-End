@@ -360,6 +360,8 @@ var PatsAuth = (function () {
       return;
     }
 
+    if (PATS.isNativeApp) return initGoogleNative(clientId, slots);
+
     loadScript(GIS_SRC)
       .then(function () {
         window.google.accounts.id.initialize({
@@ -381,6 +383,53 @@ var PatsAuth = (function () {
             text: '無法載入 Google 登入元件，請檢查網路連線。'
           }));
         });
+      });
+  }
+
+  /**
+   * Android APP：Google 不允許在 WebView 裡用網頁版登入，改用系統的 Credential Manager。
+   * webClientId 必須是「網頁」用戶端 ID，拿到的 ID Token aud 才會和後端比對的一致；
+   * Android 用戶端 ID 只要在 Google Cloud 登記套件名稱與簽章 SHA-1，程式裡不用填。
+   */
+  var nativeGoogleReady = null;
+
+  function initGoogleNative(clientId, slots) {
+    var social = PATS.nativePlugin('SocialLogin');
+    slots.forEach(function (slot, index) {
+      if (!slot) return;
+      slot.innerHTML = '';
+      if (!social) {
+        slot.appendChild(PATS.el('p', { class: 'auth-hint', text: '這個版本的 APP 不支援 Google 登入，請改用帳密登入。' }));
+        return;
+      }
+      slot.appendChild(PATS.el('button', {
+        class: 'btn btn-ghost btn-google-native',
+        type: 'button',
+        text: index === 0 ? '使用 Google 帳號登入' : '使用 Google 帳號註冊',
+        onclick: nativeGoogleLogin
+      }));
+    });
+    if (social) {
+      nativeGoogleReady = social.initialize({ google: { webClientId: clientId, mode: 'online' } });
+    }
+  }
+
+  function nativeGoogleLogin() {
+    var social = PATS.nativePlugin('SocialLogin');
+    if (!social || !nativeGoogleReady) return;
+    clearError();
+    nativeGoogleReady
+      .then(function () {
+        return social.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
+      })
+      .then(function (res) {
+        var idToken = res && res.result && res.result.idToken;
+        onCredential({ credential: idToken });
+      })
+      .catch(function (err) {
+        var text = String((err && err.message) || err || '');
+        if (/cancel/i.test(text)) return;
+        showError('Google 登入失敗：' + text);
       });
   }
 
@@ -420,6 +469,11 @@ var PatsAuth = (function () {
 
     if (window.google && window.google.accounts && window.google.accounts.id) {
       window.google.accounts.id.disableAutoSelect();
+    }
+    var social = PATS.nativePlugin('SocialLogin');
+    if (social) {
+      // 下次登入時重新讓使用者選帳號
+      social.logout({ provider: 'google' }).catch(function () { /* 沒用 Google 登入過 */ });
     }
 
     PATS.rpc('logout', {})

@@ -29,6 +29,7 @@ var PatsMain = (function () {
     PatsChat.init();
     bindRail();
     bindResize();
+    bindNativeBack();
 
     if (!state.config.apiUrl) {
       PATS.hide($('#loading'));
@@ -365,6 +366,31 @@ var PatsMain = (function () {
       if (!document.hidden) maybeCheckForUpdate('visible');
     });
     setInterval(function () { maybeCheckForUpdate('interval'); }, UPDATE_CHECK_MS);
+  }
+
+  /**
+   * Android 返回鍵：由內往外一層一層退，最外層時讓 APP 退到背景（不關閉，
+   * 下次點開不必重新載入）。通話中只退到背景，不掛斷。
+   */
+  function bindNativeBack() {
+    var app = PATS.nativePlugin('App');
+    if (!app) return;
+    app.addListener('backButton', function () {
+      var callLayer = document.getElementById('call-layer');
+      if (callLayer && !callLayer.classList.contains('hidden')) return app.minimizeApp();
+      if ($('#modal-root').childElementCount) return PATS.closeModal();
+      if ($('#menu-root').childElementCount) return PATS.closeMenu();
+
+      var inApp = !$('#app').classList.contains('hidden');
+      if (inApp && $('#app').getAttribute('data-mobile') === 'chat') return setMobilePane('list');
+      if (inApp && state.user && state.user.canChat !== false && state.view !== 'dm') return setView('dm');
+
+      var authOpen = !$('#auth').classList.contains('hidden');
+      var loginPanel = document.getElementById('login-panel');
+      if (authOpen && loginPanel && loginPanel.classList.contains('hidden')) return PatsAuth.showLoginPanel();
+
+      app.minimizeApp();
+    });
   }
 
   function bindResize() {
