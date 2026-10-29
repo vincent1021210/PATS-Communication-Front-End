@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const versionArg = process.argv.find((a) => a.startsWith('--pats-desktop-version='));
 const version = versionArg ? versionArg.split('=')[1] : '';
+const googleLoginEnabled = process.argv.includes('--pats-google-login=1');
 const clickHandlers = [];
 
 ipcRenderer.on('pats:notification-click', (event, id) => {
@@ -42,6 +43,8 @@ contextBridge.exposeInMainWorld('PATSDesktop', {
   openExternal(url) {
     ipcRenderer.send('pats:open-external', String(url || ''));
   },
+  /** 在系統瀏覽器登入 Google，回傳 { idToken } 或 { error }。沒有用戶端設定時為 null。 */
+  googleLogin: googleLoginEnabled ? () => ipcRenderer.invoke('pats:google-login') : null,
   onNotificationClick(fn) {
     if (typeof fn === 'function') clickHandlers.push(fn);
   }

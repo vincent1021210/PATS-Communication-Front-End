@@ -3,5 +3,7 @@ node_modules/
 www/
 # electron-builder 輸出；要發佈的檔案另外複製到 ../download/desktop/
 dist/
+# Google「電腦版應用程式」用戶端 ID 與密鑰：只打包進安裝檔，不進公開 repo
+google-oauth.json
 # npm run icons 產生
 build/

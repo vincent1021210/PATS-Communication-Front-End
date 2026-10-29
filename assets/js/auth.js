@@ -361,6 +361,7 @@ var PatsAuth = (function () {
     }
 
     if (PATS.isNativeApp) return initGoogleNative(clientId, slots);
+    if (PATS.isDesktopApp && PATS.desktop.googleLogin) return initGoogleDesktop(slots);
 
     loadScript(GIS_SRC)
       .then(function () {
@@ -437,6 +438,38 @@ var PatsAuth = (function () {
         }
         showError('Google 登入失敗：' + text);
       });
+  }
+
+  /** 電腦版：Google 不允許內嵌瀏覽器登入，改開系統瀏覽器，登入完 APP 會自動接手。 */
+  var desktopGoogleBusy = false;
+
+  function initGoogleDesktop(slots) {
+    slots.forEach(function (slot, index) {
+      if (!slot) return;
+      slot.innerHTML = '';
+      slot.appendChild(PATS.el('button', {
+        class: 'btn btn-ghost btn-google-native',
+        type: 'button',
+        text: index === 0 ? '使用 Google 帳號登入' : '使用 Google 帳號註冊',
+        onclick: desktopGoogleLogin
+      }));
+    });
+  }
+
+  function desktopGoogleLogin() {
+    if (desktopGoogleBusy) return;
+    desktopGoogleBusy = true;
+    clearError();
+    PATS.toast('已在瀏覽器開啟 Google 登入，完成後會自動回到 PATS');
+    PATS.desktop.googleLogin()
+      .then(function (res) {
+        if (res && res.idToken) return onCredential({ credential: res.idToken });
+        var code = String((res && res.error) || '');
+        if (code === 'GOOGLE_LOGIN_CANCELLED') return;
+        if (code === 'GOOGLE_LOGIN_TIMEOUT') return showError('Google 登入逾時，請再按一次。');
+        showError('Google 登入失敗：' + code);
+      })
+      .finally(function () { desktopGoogleBusy = false; });
   }
 
   function onCredential(response) {

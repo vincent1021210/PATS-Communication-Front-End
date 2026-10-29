@@ -5,7 +5,9 @@
 // 網址不變，Google 登入的授權網域與信令伺服器的 CORS 都不用另外設定。
 
 const { app, BrowserWindow, Menu, Notification, Tray, dialog, ipcMain, nativeImage, net, protocol, session, shell } = require('electron');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
+const http = require('node:http');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
@@ -153,7 +155,7 @@ function createWindow(startHidden) {
       sandbox: true,
       // 縮到系統匣時仍要照常輪詢新訊息、維持通話
       backgroundThrottling: false,
-      additionalArguments: ['--pats-desktop-version=' + app.getVersion()]
+      additionalArguments: ['--pats-desktop-version=' + app.getVersion(), '--pats-google-login=' + (googleConfig() ? '1' : '0')]
     }
   });
   if (state.maximized) win.maximize();
@@ -267,6 +269,111 @@ function setupIpc() {
   });
 
   ipcMain.on('pats:open-external', (event, url) => openExternal(String(url || '')));
+
+  ipcMain.handle('pats:google-login', async () => {
+    try {
+      return { idToken: await googleLogin() };
+    } catch (err) {
+      return { error: String((err && err.message) || err) };
+    }
+  });
+}
+
+/* ------------------------------------------------------------ Google 登入 */
+
+// Google 不允許在內嵌瀏覽器登入，電腦版改用系統瀏覽器：
+// 開 Google 授權頁 → 導回本機 127.0.0.1 暫時的網址拿授權碼 → 換成 ID Token 交給網頁送後端。
+// 用戶端是「電腦版應用程式」類型，Google 不把它的密鑰當機密，但仍不放進公開 repo（見 .gitignore）。
+const GOOGLE_LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
+let googleLoginPending = null;
+
+function googleConfig() {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'google-oauth.json'), 'utf8'));
+    return cfg.clientId && cfg.clientSecret ? cfg : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function base64url(buf) {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function loginResultPage(ok) {
+  const text = ok ? '登入完成，可以關閉這個分頁，回到 PATS。' : '登入沒有完成，請回到 PATS 再試一次。';
+  return '<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>PATS</title>' +
+    '<body style="font-family:system-ui,\'Microsoft JhengHei\',sans-serif;display:grid;place-items:center;height:90vh;color:#0f172a">' +
+    '<p style="font-size:18px">' + text + '</p></body></html>';
+}
+
+/** 等 Google 導回本機網址，回傳授權碼。 */
+function waitForAuthCode(server, state) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('GOOGLE_LOGIN_TIMEOUT')), GOOGLE_LOGIN_TIMEOUT_MS);
+    googleLoginPending = { reject: (err) => { clearTimeout(timer); reject(err); } };
+    server.on('request', (req, res) => {
+      const url = new URL(req.url, 'http://127.0.0.1');
+      if (url.pathname !== '/') {
+        res.writeHead(404).end();
+        return;
+      }
+      const code = url.searchParams.get('code');
+      const ok = !!code && url.searchParams.get('state') === state;
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(loginResultPage(ok));
+      clearTimeout(timer);
+      if (ok) resolve(code);
+      else reject(new Error(url.searchParams.get('error') === 'access_denied' ? 'GOOGLE_LOGIN_CANCELLED' : 'GOOGLE_LOGIN_FAILED'));
+    });
+  });
+}
+
+async function googleLogin() {
+  const cfg = googleConfig();
+  if (!cfg) throw new Error('GOOGLE_LOGIN_NOT_CONFIGURED');
+  if (googleLoginPending) googleLoginPending.reject(new Error('GOOGLE_LOGIN_CANCELLED'));
+
+  const verifier = base64url(crypto.randomBytes(32));
+  const challenge = base64url(crypto.createHash('sha256').update(verifier).digest());
+  const state = base64url(crypto.randomBytes(16));
+  const server = http.createServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const redirectUri = 'http://127.0.0.1:' + server.address().port;
+
+  try {
+    const codePromise = waitForAuthCode(server, state);
+    shell.openExternal('https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+      client_id: cfg.clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      state,
+      prompt: 'select_account'
+    }));
+    const code = await codePromise;
+
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: cfg.clientId,
+        client_secret: cfg.clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+        code_verifier: verifier
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.id_token) throw new Error('GOOGLE_TOKEN_EXCHANGE_FAILED：' + (data.error_description || data.error || res.status));
+    showWindow();
+    return data.id_token;
+  } finally {
+    googleLoginPending = null;
+    server.close();
+  }
 }
 
 /* ------------------------------------------------------------ 自動更新 */

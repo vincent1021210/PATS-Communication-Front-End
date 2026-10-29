@@ -661,8 +661,19 @@ function authChangePassword_(user, payload) {
 
 var DEFAULT_GOOGLE_CLIENT_ID = '354935544437-1vrje0je178afce6nturpghuu5r16qp6.apps.googleusercontent.com';
 
+// 電腦版在系統瀏覽器登入，ID Token 的 aud 是「電腦版應用程式」用戶端（同一個 Google Cloud 專案）
+var DESKTOP_GOOGLE_CLIENT_ID = '354935544437-eek14nh71ct5mio5nc0d27spuoo7j4bg.apps.googleusercontent.com';
+
 function googleClientId_() {
   return PropertiesService.getScriptProperties().getProperty('GOOGLE_CLIENT_ID') || DEFAULT_GOOGLE_CLIENT_ID;
+}
+
+/** 接受的 ID Token aud：網頁用戶端、電腦版用戶端，以及指令碼屬性 GOOGLE_EXTRA_CLIENT_IDS（逗號分隔）。 */
+function googleAudiences_() {
+  var extra = String(PropertiesService.getScriptProperties().getProperty('GOOGLE_EXTRA_CLIENT_IDS') || '')
+    .split(',')
+    .map(function (s) { return s.trim(); });
+  return [googleClientId_(), DESKTOP_GOOGLE_CLIENT_ID].concat(extra).filter(Boolean);
 }
 
 /**
@@ -685,7 +696,7 @@ function authGoogleLogin_(payload) {
   if (res.getResponseCode() !== 200) throw new Error('GOOGLE_TOKEN_INVALID');
 
   var claims = parseJson_(res.getContentText(), {});
-  if (String(claims.aud) !== clientId) throw new Error('GOOGLE_AUDIENCE_MISMATCH');
+  if (googleAudiences_().indexOf(String(claims.aud)) < 0) throw new Error('GOOGLE_AUDIENCE_MISMATCH');
   if (['accounts.google.com', 'https://accounts.google.com'].indexOf(String(claims.iss)) < 0) {
     throw new Error('GOOGLE_ISSUER_MISMATCH');
   }

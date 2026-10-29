@@ -15,6 +15,7 @@ files:
   - main.js
   - preload.js
   - package.json
+  - google-oauth.json
   - www/**/*
 win:
   target: nsis

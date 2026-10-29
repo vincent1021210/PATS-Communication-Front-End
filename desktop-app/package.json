@@ -1,7 +1,7 @@
 {
   "name": "pats-desktop",
   "productName": "PATS",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "PATS 電腦版：畫面打包在安裝檔裡，資料仍由 Apps Script 雲端提供",
   "author": "vincent1021210",
