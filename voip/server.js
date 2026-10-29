@@ -16,9 +16,24 @@ var socketIo = require('socket.io');
 var PORT = Number(process.env.PORT) || 3001;
 var app = express();
 var server = http.createServer(app);
+/** 允許網頁（GitHub Pages）與 Capacitor APP（https://localhost） */
+function corsOrigin() {
+  var raw = process.env.CORS_ORIGIN;
+  if (!raw || raw === '*' || raw === 'true') return true;
+  var list = String(raw).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  ['https://localhost', 'capacitor://localhost', 'ionic://localhost'].forEach(function (o) {
+    if (list.indexOf(o) < 0) list.push(o);
+  });
+  if (list.length === 1) return list[0];
+  return function (origin, callback) {
+    if (!origin || list.indexOf(origin) >= 0) callback(null, true);
+    else callback(null, false);
+  };
+}
+
 var io = socketIo(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || true,
+    origin: corsOrigin(),
     methods: ['GET', 'POST']
   }
 });

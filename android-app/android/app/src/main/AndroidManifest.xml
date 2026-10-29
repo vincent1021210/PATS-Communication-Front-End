@@ -36,6 +36,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Android 12+ 藍牙耳機通話需要 -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- 第二階段推播通知用（Android 13 以上要使用者同意） -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

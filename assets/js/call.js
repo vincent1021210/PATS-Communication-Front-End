@@ -189,8 +189,58 @@ var PatsCall = (function () {
 
   /* --------------------------------------------------------------- 畫面 */
 
-  function showLayer() { $('call-layer').classList.remove('hidden'); }
-  function hideLayer() { $('call-layer').classList.add('hidden'); }
+  /** Android APP：把 WebRTC 聲音切到通訊模式＋喇叭，否則常走聽筒幾乎聽不到 */
+  function nativeCallAudio(action, opts) {
+    try {
+      if (!window.PATS || !PATS.isNativeApp || !PATS.nativePlugin) return;
+      var plugin = PATS.nativePlugin('CallAudio');
+      if (!plugin || typeof plugin[action] !== 'function') return;
+      plugin[action](opts || {}).catch(function () { /* 舊版 APK 沒此外掛 */ });
+    } catch (e) { /* ignore */ }
+  }
+
+  function showLayer() {
+    $('call-layer').classList.remove('hidden');
+    // 視訊／語音都預設外放；之後若加「聽筒」鍵可改 setSpeaker
+    nativeCallAudio('start', { speaker: true });
+  }
+  function hideLayer() {
+    $('call-layer').classList.add('hidden');
+    nativeCallAudio('stop');
+  }
+
+  /** 把遠端串流掛到 <audio>／視訊元素；APP 上視訊改靜音、聲音走 audio，避免 WebView 擋影音自動播放 */
+  function playRemoteStream(stream) {
+    if (!stream) return;
+    var audio = $('call-remote');
+    var remoteVideo = $('call-remote-video');
+    var isVideo = !!(session && session.media === 'video');
+    var native = !!(window.PATS && PATS.isNativeApp);
+
+    if (isVideo && remoteVideo) {
+      if (remoteVideo.srcObject !== stream) remoteVideo.srcObject = stream;
+      $('call-layer').classList.toggle('has-remote-video', stream.getVideoTracks().length > 0);
+      if (native && audio) {
+        remoteVideo.muted = true;
+        audio.srcObject = stream;
+        audio.muted = false;
+        audio.volume = 1;
+        audio.play().catch(function () {});
+        remoteVideo.play().catch(function () {});
+      } else {
+        remoteVideo.muted = false;
+        playRemoteVideo();
+      }
+      return;
+    }
+
+    if (audio) {
+      audio.srcObject = stream;
+      audio.muted = false;
+      audio.volume = 1;
+      audio.play().catch(function () {});
+    }
+  }
 
   function setStatus(text) { $('call-status').textContent = text; }
 
@@ -636,11 +686,7 @@ var PatsCall = (function () {
   function attachRemoteAudio(peerId, stream) {
     var box = $('call-remotes');
     if (!box) {
-      var single = $('call-remote');
-      if (single) {
-        single.srcObject = stream;
-        single.play().catch(function () {});
-      }
+      playRemoteStream(stream);
       return;
     }
     var id = 'call-remote-' + peerId;
@@ -653,7 +699,11 @@ var PatsCall = (function () {
       box.appendChild(audio);
     }
     audio.srcObject = stream;
+    audio.muted = false;
+    audio.volume = 1;
     audio.play().catch(function () {});
+    // 群組通話也要切到通訊音訊模式（showLayer 已呼叫；這裡再保險一次）
+    nativeCallAudio('start', { speaker: true });
   }
 
   function removeRemoteAudio(peerId) {
@@ -1620,11 +1670,8 @@ var PatsCall = (function () {
           onTrack: function (remote, track) {
             if (session && session.media === 'video') {
               attachRemoteVideo(remote, track);
-              return;
             }
-            var audio = $('call-remote');
-            audio.srcObject = remote;
-            audio.play().catch(function () {});
+            playRemoteStream(remote);
           },
           onConnectionState: onConnectionState
         });
