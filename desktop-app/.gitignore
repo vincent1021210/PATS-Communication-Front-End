@@ -1,0 +1,7 @@
+node_modules/
+# 每次 npm run sync 從 repo 根目錄重新產生
+www/
+# electron-builder 輸出；要發佈的檔案另外複製到 ../download/desktop/
+dist/
+# npm run icons 產生
+build/

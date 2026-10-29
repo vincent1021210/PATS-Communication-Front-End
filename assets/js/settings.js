@@ -127,6 +127,8 @@ var PatsSettings = (function () {
         }).catch(function () { /* 保留網頁版本 */ });
       }
     }
+    if (PATS.isDesktopApp) versionItem._sub.textContent = 'Windows APP ' + PATS.desktop.version + '・網頁 ' + versionText();
+    var inApp = PATS.isNativeApp || PATS.isDesktopApp;
 
     return el('div', { class: 'set-body' }, [
       group('帳號', [
@@ -143,6 +145,8 @@ var PatsSettings = (function () {
       ]) : null,
       group('其他', [
         versionItem,
+        inApp ? null : item('下載電腦版', 'Windows 電腦版：開機自動啟動、新訊息桌面通知',
+          function () { window.location.href = PATS.DESKTOP_DOWNLOAD_URL; }),
         item('隱私權政策', null, function () { PATS.openExternal('https://vincent1021210.github.io/privacy.html'); }),
         item('服務條款', null, function () { PATS.openExternal('https://vincent1021210.github.io/terms.html'); }),
         item('切換帳號或登出', '登出目前的帳號，回到登入畫面', function () { render('switch'); }, { danger: true })

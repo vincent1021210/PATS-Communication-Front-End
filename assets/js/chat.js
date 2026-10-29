@@ -1744,7 +1744,8 @@ var PatsChat = (function () {
    */
   function runPoll() {
     if (!polling || pollRunning) return;
-    if (document.hidden || !state.user || !isChatView(state.view)) {
+    // 電腦版縮到系統匣時也要繼續抓，才能跳新訊息通知
+    if ((document.hidden && !PATS.isDesktopApp) || !state.user || !isChatView(state.view)) {
       schedulePoll(POLL_INTERVAL_MS);
       return;
     }

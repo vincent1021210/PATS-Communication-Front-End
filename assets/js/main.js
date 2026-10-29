@@ -30,6 +30,7 @@ var PatsMain = (function () {
     bindRail();
     bindResize();
     bindNativeBack();
+    bindDesktopNotifications();
 
     if (!state.config.apiUrl) {
       PATS.hide($('#loading'));
@@ -316,10 +317,37 @@ var PatsMain = (function () {
   function updateBadges(list) {
     if (state.view === 'archive') return;
     var total = list.reduce(function (sum, conv) { return sum + (conv.unread || 0); }, 0);
+    notifyDesktop(list, total);
     var badge = document.querySelector('[data-count="' + state.view + '"]');
     if (!badge) return;
     badge.textContent = String(total);
     badge.classList.toggle('hidden', total === 0);
+  }
+
+  /* 電腦版：每個列表（私訊、群組）各自記下每個對話最後訊息時間，第一次載入只當基準不通知 */
+  var desktopSeen = {};
+
+  /** 電腦版視窗不在前景時，對話有新的未讀訊息就跳 Windows 通知，並在工作列圖示顯示未讀數。 */
+  function notifyDesktop(list, total) {
+    var desktop = PATS.desktop;
+    if (!desktop) return;
+    desktop.setBadge(total);
+    var first = !desktopSeen[state.view];
+    var seen = desktopSeen[state.view] || (desktopSeen[state.view] = {});
+    var focused = document.hasFocus();
+    list.forEach(function (conv) {
+      var prev = seen[conv.id];
+      seen[conv.id] = conv.lastMessageAt;
+      if (first || focused || !conv.unread || prev === conv.lastMessageAt) return;
+      desktop.notify(conv.title || 'PATS', conv.preview || '你有新訊息', conv.id);
+    });
+  }
+
+  function bindDesktopNotifications() {
+    if (!PATS.desktop) return;
+    PATS.desktop.onNotificationClick(function (id) {
+      if (id) PatsChat.openConversation(id);
+    });
   }
 
   /* --------------------------------------------------------------- 綁定 */

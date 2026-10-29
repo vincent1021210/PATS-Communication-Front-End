@@ -1,0 +1,39 @@
+# PATS 電腦版安裝檔設定。npm run dist 產生 dist/PATS-Setup.exe 與 latest.yml，
+# 再用 npm run release 上傳到 GitHub Release。
+appId: tw.pats.chat
+productName: PATS
+copyright: Copyright © PATS
+directories:
+  output: dist
+  buildResources: build
+# GitHub 單檔上限 100MB：只留中英文語系並用最高壓縮
+electronLanguages:
+  - zh-TW
+  - en-US
+compression: maximum
+files:
+  - main.js
+  - preload.js
+  - package.json
+  - www/**/*
+win:
+  target: nsis
+  icon: build/icon.png
+  # 檔名固定，網站上的下載連結才不用每版改；版本由 latest.yml 記錄
+  artifactName: PATS-Setup.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: PATS
+  uninstallDisplayName: PATS
+  deleteAppDataOnUninstall: false
+# 安裝檔超過 GitHub 一般檔案 100MB 上限，放在 GitHub Releases；
+# 已安裝的電腦從最新 Release 的 latest.yml 檢查新版
+publish:
+  provider: github
+  owner: vincent1021210
+  repo: vincent1021210.github.io
+  releaseType: release

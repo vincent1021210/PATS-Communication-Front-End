@@ -153,6 +153,11 @@ var PATS = (function () {
   var appCheckedAt = 0;
   var appUpdatePrompted = false;
 
+  // 電腦版（Electron）：畫面同樣打包在安裝檔裡，新版由安裝檔自動更新，網頁不自己重新整理
+  var desktop = window.PATSDesktop || null;
+  var isDesktopApp = !!desktop;
+  var DESKTOP_DOWNLOAD_URL = 'https://github.com/vincent1021210/vincent1021210.github.io/releases/latest/download/PATS-Setup.exe';
+
   function nativePlugin(name) {
     if (!isNativeApp || !window.Capacitor.Plugins) return null;
     return window.Capacitor.Plugins[name] || null;
@@ -162,6 +167,7 @@ var PATS = (function () {
   function openExternal(url) {
     var browser = nativePlugin('Browser');
     if (browser) return browser.open({ url: url });
+    if (desktop) return desktop.openExternal(url);
     window.open(url, '_blank', 'noopener');
   }
 
@@ -193,7 +199,7 @@ var PATS = (function () {
 
   function checkForUpdate(reason) {
     if (isNativeApp) return checkAppVersion(reason);
-    if (updateRunning || !window.fetch) return Promise.resolve(false);
+    if (isDesktopApp || updateRunning || !window.fetch) return Promise.resolve(false);
     var mine = currentBuild();
     if (!mine) return Promise.resolve(false);
     updateRunning = true;
@@ -539,6 +545,7 @@ var PATS = (function () {
     if (statusBar) statusBar.setStyle({ style: 'LIGHT' }).catch(function () { /* 舊版 Android 不支援 */ });
     document.documentElement.classList.add('is-native-app');
   }
+  if (isDesktopApp) document.documentElement.classList.add('is-desktop-app');
 
   return {
     state: state,
@@ -555,6 +562,7 @@ var PATS = (function () {
     openMenu: openMenu, closeMenu: closeMenu,
     checkForUpdate: checkForUpdate, cleanVersionParams: cleanVersionParams,
     perfMark: perfMark,
-    isNativeApp: isNativeApp, nativePlugin: nativePlugin, openExternal: openExternal
+    isNativeApp: isNativeApp, nativePlugin: nativePlugin, openExternal: openExternal,
+    isDesktopApp: isDesktopApp, desktop: desktop, DESKTOP_DOWNLOAD_URL: DESKTOP_DOWNLOAD_URL
   };
 })();

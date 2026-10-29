@@ -1,0 +1,24 @@
+{
+  "name": "pats-desktop",
+  "productName": "PATS",
+  "version": "1.0.1",
+  "private": true,
+  "description": "PATS 電腦版：畫面打包在安裝檔裡，資料仍由 Apps Script 雲端提供",
+  "author": "vincent1021210",
+  "main": "main.js",
+  "scripts": {
+    "sync": "node scripts/sync-web.mjs",
+    "icons": "node scripts/make-icons.cjs",
+    "start": "npm run sync && electron .",
+    "dist": "npm run sync && npm run icons && electron-builder --win nsis --publish never",
+    "release": "node scripts/release.mjs"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
+  "devDependencies": {
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0",
+    "socket.io-client": "^4.8.1"
+  }
+}

@@ -492,6 +492,7 @@ var PatsCall = (function () {
     document.addEventListener('visibilitychange', function () {
       // 手機切到背景時瀏覽器會暫停鏡頭，先通知對方，避免畫面卡在最後一格
       if (document.hidden) {
+        if (window.PATS && PATS.isDesktopApp) return;
         sendMediaState({ video: false, reason: 'background' });
         return;
       }
