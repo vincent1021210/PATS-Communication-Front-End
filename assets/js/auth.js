@@ -430,6 +430,11 @@ var PatsAuth = (function () {
       .catch(function (err) {
         var text = String((err && err.message) || err || '');
         if (/cancel/i.test(text)) return;
+        // 28444：Google Cloud 還沒在「正確專案」登記這個 APK 的套件名稱＋SHA-1
+        if (/28444|Developer console is not set up/i.test(text)) {
+          showError('Google 登入尚未設定完成：請在 Google Cloud 專案（網頁用戶端 354935544437… 那個）新增 Android 用戶端，套件名稱 tw.pats.chat，並填入正式版 SHA-1。設定後請等幾分鐘再試。');
+          return;
+        }
         showError('Google 登入失敗：' + text);
       });
   }
