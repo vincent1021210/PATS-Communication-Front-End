@@ -145,7 +145,8 @@ var PatsSettings = (function () {
       ]) : null,
       group('其他', [
         versionItem,
-        inApp ? null : item('下載電腦版', 'Windows 電腦版：開機自動啟動、新訊息桌面通知',
+        PATS.isIosBrowser ? item('安裝到 iPhone 主畫面', '全螢幕開啟、畫面存在手機裡、自動更新', PATS.showIosInstall) : null,
+        inApp || PATS.isIosBrowser ? null : item('下載電腦版', 'Windows 電腦版：開機自動啟動、新訊息桌面通知',
           function () { window.location.href = PATS.DESKTOP_DOWNLOAD_URL; }),
         item('隱私權政策', null, function () { PATS.openExternal('https://vincent1021210.github.io/privacy.html'); }),
         item('服務條款', null, function () { PATS.openExternal('https://vincent1021210.github.io/terms.html'); }),

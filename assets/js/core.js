@@ -231,6 +231,74 @@ var PATS = (function () {
       .catch(function () { /* 下次再試 */ });
   }
 
+  /* --------------------------------------------- 網站版：畫面存在裝置裡（sw.js） */
+
+  var swSupported = !isNativeApp && !isDesktopApp && 'serviceWorker' in navigator && window.isSecureContext;
+
+  function registerShell() {
+    if (!swSupported) return;
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* 不支援就照舊每次連網 */ });
+    });
+  }
+
+  function shellBuild() {
+    var controller = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (!controller || !window.MessageChannel) return Promise.resolve('');
+    return new Promise(function (resolve) {
+      var channel = new MessageChannel();
+      channel.port1.onmessage = function (event) { resolve(String(event.data || '')); };
+      controller.postMessage('pats-build', [channel.port2]);
+      setTimeout(function () { resolve(''); }, 2000);
+    });
+  }
+
+  /** 重新整理前先等 Service Worker 把新版畫面下載好，否則重新整理還是拿到快取裡的舊版。 */
+  function waitForShell(latest) {
+    if (!swSupported || !navigator.serviceWorker.controller) return Promise.resolve();
+    return shellBuild().then(function (cached) {
+      if (cached === latest) return;
+      return new Promise(function (resolve) {
+        var done = false;
+        function finish() { if (!done) { done = true; resolve(); } }
+        navigator.serviceWorker.addEventListener('controllerchange', finish);
+        setTimeout(finish, 15000);
+        navigator.serviceWorker.getRegistration()
+          .then(function (reg) { return reg && reg.update(); })
+          .catch(finish);
+      });
+    });
+  }
+
+  registerShell();
+
+  /* ------------------------------------------ iPhone：教使用者「加入主畫面」 */
+
+  var isIosBrowser = (function () {
+    var ua = navigator.userAgent || '';
+    var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    var standalone = window.navigator.standalone === true ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    return ios && !standalone && !isNativeApp;
+  })();
+  if (isIosBrowser) {
+    document.documentElement.classList.add('is-ios-browser');
+    document.addEventListener('click', function (event) {
+      if (!event.target.closest || !event.target.closest('#ios-install')) return;
+      event.preventDefault();
+      showIosInstall();
+    });
+  }
+
+  function showIosInstall() {
+    openModal({
+      title: '安裝到 iPhone 主畫面',
+      lead: '1. 用 Safari 開啟這個網頁\n2. 點下方的「分享」按鈕（方框加向上箭頭）\n3. 選「加入主畫面」，再按「新增」\n\n之後從主畫面的 PATS 圖示開啟，就像一般 APP：全螢幕、畫面存在手機裡、開啟更快，有新版會自動更新。',
+      confirmText: '知道了',
+      onSubmit: function () { closeModal(); }
+    });
+  }
+
   function checkForUpdate(reason) {
     if (isNativeApp) return checkAppVersion(reason);
     if (isDesktopApp || updateRunning || !window.fetch) return Promise.resolve(false);
@@ -247,11 +315,13 @@ var PATS = (function () {
           if (sessionStorage.getItem(RELOADED_KEY) === latest) return false;
           sessionStorage.setItem(RELOADED_KEY, latest);
         } catch (e) { return false; }
-        var url = new URL(window.location.href);
-        url.searchParams.delete('r');
-        url.searchParams.set('v', latest);
-        window.location.replace(url.toString());
-        return true;
+        return waitForShell(latest).then(function () {
+          var url = new URL(window.location.href);
+          url.searchParams.delete('r');
+          url.searchParams.set('v', latest);
+          window.location.replace(url.toString());
+          return true;
+        });
       })
       .catch(function () { return false; })
       .then(function (reloading) {
@@ -601,6 +671,7 @@ var PATS = (function () {
     checkForUpdate: checkForUpdate, cleanVersionParams: cleanVersionParams,
     perfMark: perfMark,
     isNativeApp: isNativeApp, nativePlugin: nativePlugin, openExternal: openExternal,
-    isDesktopApp: isDesktopApp, desktop: desktop, DESKTOP_DOWNLOAD_URL: DESKTOP_DOWNLOAD_URL
+    isDesktopApp: isDesktopApp, desktop: desktop, DESKTOP_DOWNLOAD_URL: DESKTOP_DOWNLOAD_URL,
+    isIosBrowser: isIosBrowser, showIosInstall: showIosInstall
   };
 })();

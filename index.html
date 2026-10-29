@@ -20,12 +20,18 @@
   {"@context":"https://schema.org","@type":"WebApplication","@id":"https://vincent1021210.github.io/PATS-Recommendation/#app","name":"PATS","url":"https://vincent1021210.github.io/","description":"免費、免安裝的網頁通訊：不需要 LINE 或手機號碼，用瀏覽器登入就能私訊、建群組、傳照片和語音視訊通話。","applicationCategory":"CommunicationApplication","operatingSystem":"Any (web browser)","inLanguage":"zh-Hant","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"TWD"},"sameAs":["https://vincent1021210.github.io/PATS-Recommendation/"]}
   </script>
   <meta name="theme-color" content="#2563eb">
-  <meta name="pats-build" content="20261029g">
+  <meta name="pats-build" content="20261030a">
   <title>PATS · 學生通訊</title>
 
   <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="assets/brand/icon-192.png">
   <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+  <!-- iPhone「加入主畫面」後以全螢幕 APP 開啟；狀態列用 default，畫面不會被時鐘蓋住 -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="PATS">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
   <!-- 先跟 Apps Script 建好連線（API 會從 script.google.com 轉址到 googleusercontent） -->
   <link rel="preconnect" href="https://script.google.com" crossorigin>
@@ -35,7 +41,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=archive,arrow_back,badge,call,call_end,cameraswitch,chat,chat_bubble,chevron_right,child_care,delete_sweep,edit_square,error,forum,group_add,groups,history,history_edu,image,inbox,key,keyboard_arrow_down,lock,lock_reset,login,logout,mail,manage_accounts,mark_email_read,mic,mic_off,mop,more_horiz,more_vert,person,person_add,pin,refresh,report,save,school,search,send,settings,shield,storage,supervisor_account,unarchive,videocam,videocam_off,visibility,visibility_off&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/styles.css?v=20261029g">
+  <link rel="stylesheet" href="assets/css/styles.css?v=20261030a">
 </head>
 
 <body>
@@ -124,6 +130,9 @@
         </p>
         <p class="auth-footer auth-download">
           下載 <a href="https://github.com/vincent1021210/vincent1021210.github.io/releases/latest/download/PATS-Setup.exe">Windows 電腦版</a>・<a href="download/PATS.apk">Android APP</a>
+        </p>
+        <p class="auth-footer auth-ios">
+          <a href="#" id="ios-install">iPhone：安裝到主畫面，像 APP 一樣使用</a>
         </p>
       </div>
 
@@ -496,16 +505,16 @@
 
   <!-- defer 會依照下面的順序執行，順序不能亂調 -->
   <script defer src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-  <script defer src="assets/js/config.js?v=20261029g"></script>
-  <script defer src="assets/js/core.js?v=20261029g"></script>
-  <script defer src="assets/js/cache.js?v=20261029g"></script>
-  <script defer src="assets/js/auth.js?v=20261029g"></script>
-  <script defer src="assets/js/AudioStreamManager.js?v=20261029g"></script>
-  <script defer src="assets/js/WebRTCManager.js?v=20261029g"></script>
-  <script defer src="assets/js/call-tones.js?v=20261029g"></script>
-  <script defer src="assets/js/call.js?v=20261029g"></script>
-  <script defer src="assets/js/chat.js?v=20261029g"></script>
-  <script defer src="assets/js/settings.js?v=20261029g"></script>
-  <script defer src="assets/js/main.js?v=20261029g"></script>
+  <script defer src="assets/js/config.js?v=20261030a"></script>
+  <script defer src="assets/js/core.js?v=20261030a"></script>
+  <script defer src="assets/js/cache.js?v=20261030a"></script>
+  <script defer src="assets/js/auth.js?v=20261030a"></script>
+  <script defer src="assets/js/AudioStreamManager.js?v=20261030a"></script>
+  <script defer src="assets/js/WebRTCManager.js?v=20261030a"></script>
+  <script defer src="assets/js/call-tones.js?v=20261030a"></script>
+  <script defer src="assets/js/call.js?v=20261030a"></script>
+  <script defer src="assets/js/chat.js?v=20261030a"></script>
+  <script defer src="assets/js/settings.js?v=20261030a"></script>
+  <script defer src="assets/js/main.js?v=20261030a"></script>
 </body>
 </html>

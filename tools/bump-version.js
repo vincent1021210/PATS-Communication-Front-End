@@ -61,6 +61,11 @@ if (/\uFFFD/.test(html)) {
 }
 
 fs.writeFileSync(indexPath, html, 'utf8');
+// sw.js 內容變了瀏覽器才會下載新版畫面
+const swPath = path.join(root, 'sw.js');
+if (fs.existsSync(swPath)) {
+  fs.writeFileSync(swPath, fs.readFileSync(swPath, 'utf8').replace(/var BUILD = '[^']*';/, "var BUILD = '" + version + "';"), 'utf8');
+}
 // 保留 androidMin 等其他欄位（Android APP 用來判斷是否要強制更新）
 let versionInfo = {};
 try { versionInfo = JSON.parse(fs.readFileSync(versionPath, 'utf8')); } catch (e) { /* 第一次建立 */ }
