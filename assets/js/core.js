@@ -184,7 +184,9 @@ var PATS = (function () {
         var info = results[0] || {};
         var remote = results[1] || {};
         var min = Number(remote.androidMin || 0);
-        if (!min || Number(info.build || 0) >= min) return false;
+        if (!min || Number(info.build || 0) >= min) {
+          return checkLiveUpdate(info).then(function () { return false; });
+        }
         appUpdatePrompted = true;
         openModal({
           title: '請更新 PATS APP',
@@ -195,6 +197,38 @@ var PATS = (function () {
         return true;
       })
       .catch(function () { return false; });
+  }
+
+  // 畫面更新包：APK 不必重裝，背景下載新版畫面，下次切回 APP 時自動換上（見 android-app/scripts/make-web-update.mjs）
+  var LIVE_UPDATE_URL = 'https://vincent1021210.github.io/download/android-web/latest.json';
+  var liveUpdateQueued = '';
+
+  function checkLiveUpdate(info) {
+    var updater = nativePlugin('CapacitorUpdater');
+    if (!updater) return Promise.resolve();
+    return fetch(LIVE_UPDATE_URL + '?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (remote) {
+        var latest = remote && remote.build ? String(remote.build) : '';
+        var mine = currentBuild();
+        // build 是可排序的日期字串，只往新版走
+        if (!latest || !remote.url || latest <= mine || latest === liveUpdateQueued) return;
+        if (Number(info.build || 0) < Number(remote.nativeMin || 0)) return;
+        return updater.list()
+          .then(function (res) {
+            var bundles = (res && res.bundles) || [];
+            for (var i = 0; i < bundles.length; i++) {
+              if (bundles[i].version === latest && bundles[i].status !== 'error') return bundles[i];
+            }
+            return updater.download({ url: remote.url, version: latest, checksum: remote.checksum });
+          })
+          .then(function (bundle) { return updater.next({ id: bundle.id }); })
+          .then(function () {
+            liveUpdateQueued = latest;
+            toast('新版畫面已下載，切換到其他 APP 再回來就會套用');
+          });
+      })
+      .catch(function () { /* 下次再試 */ });
   }
 
   function checkForUpdate(reason) {
@@ -530,6 +564,10 @@ var PATS = (function () {
   });
 
   if (isNativeApp) {
+    // 畫面更新包載入成功要立刻回報，否則外掛 10 秒後會退回上一版畫面
+    var liveUpdater = nativePlugin('CapacitorUpdater');
+    if (liveUpdater) liveUpdater.notifyAppReady().catch(function () { /* 舊版 APK 沒有這個外掛 */ });
+
     // APP 裡點到 http(s) 連結（訊息網址、推薦網站等）一律開系統瀏覽器，
     // 否則 WebView 會直接換頁，回不到聊天畫面
     document.addEventListener('click', function (event) {

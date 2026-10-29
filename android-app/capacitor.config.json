@@ -9,6 +9,16 @@
     "backgroundColor": "#f5f7fb"
   },
   "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "updateUrl": "",
+      "statsUrl": "",
+      "channelUrl": "",
+      "appReadyTimeout": 10000,
+      "autoDeleteFailed": true,
+      "autoDeletePrevious": true,
+      "resetWhenUpdate": true
+    },
     "SocialLogin": {
       "providers": {
         "google": true,

@@ -86,3 +86,15 @@ const refs = html.match(/assets\/[^"?]+\?v=[^"]+/g) || [];
 console.log('版本號：' + version);
 console.log('已更新 ' + refs.length + ' 個資源：');
 refs.forEach((r) => console.log('  ' + r));
+
+// 同一版畫面也發給 Android APP（背景下載、下次切回 APP 套用）
+const androidApp = path.join(root, 'android-app');
+if (fs.existsSync(path.join(androidApp, 'node_modules'))) {
+  const r = require('child_process').spawnSync(process.execPath, ['scripts/make-web-update.mjs'], { cwd: androidApp, stdio: 'inherit' });
+  if (r.status !== 0) {
+    console.error('Android 畫面更新包產生失敗（網站版本號已更新）。');
+    process.exit(1);
+  }
+} else {
+  console.warn('略過 Android 畫面更新包：請先在 android-app/ 執行 npm install');
+}
