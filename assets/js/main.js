@@ -10,7 +10,7 @@ var PatsMain = (function () {
 
   /* Rail 上的按鈕 → 設定區實際要顯示的子畫面 */
   var SETTINGS_SECTION = {
-    settings: 'archive',
+    settings: 'home',
     profile: 'account',
     admin: 'admin',
     switch: 'switch'
@@ -383,6 +383,7 @@ var PatsMain = (function () {
 
       var inApp = !$('#app').classList.contains('hidden');
       if (inApp && $('#app').getAttribute('data-mobile') === 'chat') return setMobilePane('list');
+      if (inApp && SETTINGS_SECTION[state.view] && PatsSettings.isSubPage()) return PatsSettings.back();
       if (inApp && state.user && state.user.canChat !== false && state.view !== 'dm') return setView('dm');
 
       var authOpen = !$('#auth').classList.contains('hidden');

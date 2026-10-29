@@ -835,17 +835,58 @@ select.email-domain {
 .settings-pane { min-width: 0; background: var(--canvas); overflow-y: auto; }
 .settings-inner { max-width: 720px; margin: 0 auto; padding: 36px 24px 56px; }
 
-.settings-tabs {
-  display: flex; gap: 4px; margin-bottom: 24px; padding: 4px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+/* 設定頁：頂端返回列＋分組清單（每組圓角卡片，項目之間細縫分隔） */
+.set-page { max-width: 720px; margin: 0 auto; min-height: 100%; }
+.set-bar {
+  position: sticky; top: 0; z-index: 3;
+  display: flex; align-items: center; gap: 12px;
+  min-height: 60px; padding: 10px 16px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  background: var(--canvas);
 }
-.settings-tabs button {
-  flex: 1; height: 36px; border-radius: var(--r-sm);
-  color: var(--ink-500); font-size: 13px;
-  transition: background-color .15s var(--ease), color .15s var(--ease);
+.set-bar-title { margin: 0; font-size: 20px; font-weight: 600; }
+.set-back { width: 40px; height: 40px; flex: none; }
+.set-back .material-symbols-outlined { font-size: 24px; }
+/* 桌機有左側導覽列，設定首頁不需要返回鍵 */
+.set-bar.is-home .set-back { display: none; }
+.set-bar.is-home { padding-left: 24px; }
+
+.set-body { padding: 0 16px 40px; }
+.set-section { margin-top: 18px; }
+.set-label {
+  margin: 0 0 8px 6px;
+  font-size: 13px; font-weight: 600; color: var(--brand-700);
 }
-.settings-tabs button:hover { background: var(--surface-sunk); color: var(--ink-900); }
-.settings-tabs button.is-active { background: var(--brand-50); color: var(--brand-700); font-weight: 500; }
+.set-group {
+  display: flex; flex-direction: column; gap: 2px;
+  border-radius: 20px; overflow: hidden;
+}
+.set-item {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  min-height: 64px; padding: 14px 20px;
+  background: var(--surface); text-align: left;
+  border-radius: 4px;
+}
+.set-group > .set-item:first-child { border-top-left-radius: 20px; border-top-right-radius: 20px; }
+.set-group > .set-item:last-child { border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+button.set-item, label.set-item { cursor: pointer; transition: background-color .15s var(--ease); }
+button.set-item:hover, label.set-item:hover { background: var(--surface-sunk); }
+button.set-item:active, label.set-item:active { background: var(--brand-50); }
+.set-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.set-title { font-size: 16px; font-weight: 500; color: var(--ink-900); }
+.set-sub { font-size: 13px; color: var(--ink-500); line-height: 1.5; overflow-wrap: anywhere; }
+.set-chevron { color: var(--ink-400); font-size: 22px; flex: none; }
+.set-item.is-danger .set-title { color: var(--danger); }
+
+.set-radio input { width: 20px; height: 20px; flex: none; accent-color: var(--brand-600); cursor: pointer; }
+.set-radio:has(input:checked) { background: var(--brand-50); }
+
+.set-form { flex-direction: column; align-items: stretch; gap: 12px; padding: 18px 20px; cursor: default; }
+.set-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+.set-hint { margin: 14px 6px 0; font-size: 13px; color: var(--ink-500); line-height: 1.7; }
+.set-actions { display: flex; justify-content: center; margin-top: 24px; }
+.set-actions .btn { min-width: 220px; height: 44px; }
 
 .settings-title { margin: 0; font-size: 24px; font-weight: 700; }
 .settings-lead { margin: 8px 0 28px; color: var(--ink-500); font-size: 13px; }
@@ -1491,12 +1532,12 @@ select.email-domain {
     padding: 20px 16px calc(28px + env(safe-area-inset-bottom));
   }
   .settings-title { font-size: 20px; }
-  .settings-tabs {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    margin-bottom: 18px;
-  }
+  .set-bar { padding-left: 8px; }
+  .set-bar.is-home { padding-left: 8px; }
+  .set-bar.is-home .set-back { display: inline-flex; }
+  .set-body { padding: 0 12px calc(28px + env(safe-area-inset-bottom)); }
+  .set-form-actions .btn { flex: 1; }
+  .set-actions .btn { width: 100%; }
   .settings-actions { flex-direction: column-reverse; }
   .settings-actions .btn { width: 100%; }
 
