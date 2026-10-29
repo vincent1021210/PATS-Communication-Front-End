@@ -249,7 +249,7 @@ textarea.input {
 .auth-brand > * { position: relative; z-index: 1; }
 
 .auth-logo { display: flex; align-items: center; gap: 12px; }
-.auth-logo .avatar { width: 44px; height: 44px; }
+.auth-logo-img { width: 48px; height: 48px; flex: none; display: block; }
 .auth-logo h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: .5px; }
 .auth-logo span { font-size: 12px; color: var(--ink-500); }
 
