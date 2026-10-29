@@ -33,6 +33,14 @@ var PATS_CONFIG = {
   googleClientId: '354935544437-1vrje0je178afce6nturpghuu5r16qp6.apps.googleusercontent.com',
 
   /**
+   * iPhone APP 用的 Google 用戶端 ID（類型選「iOS」，軟體包 ID 填 tw.pats.chat）。
+   * 留空時 iPhone APP 只能帳密登入。填好後還要：
+   *   1. 把同一個 ID 加到 Apps Script 指令碼屬性 GOOGLE_EXTRA_CLIENT_IDS
+   *   2. 執行 android-app/scripts/ios-google-scheme.mjs 寫入 iOS 網址配置
+   */
+  googleIosClientId: '',
+
+  /**
    * 語音通話信令（Node + Socket.io，不是 Apps Script）。
    *
    * GitHub Pages（HTTPS）必須用 https 信令，否則會被 mixed content 擋住。

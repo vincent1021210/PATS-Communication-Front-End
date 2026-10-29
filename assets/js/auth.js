@@ -396,6 +396,8 @@ var PatsAuth = (function () {
 
   function initGoogleNative(clientId, slots) {
     var social = PATS.nativePlugin('SocialLogin');
+    var iosClientId = (window.PATS_CONFIG && PATS_CONFIG.googleIosClientId) || '';
+    if (PATS.isIosApp && !iosClientId) social = null;
     slots.forEach(function (slot, index) {
       if (!slot) return;
       slot.innerHTML = '';
@@ -411,7 +413,12 @@ var PatsAuth = (function () {
       }));
     });
     if (social) {
-      nativeGoogleReady = social.initialize({ google: { webClientId: clientId, mode: 'online' } });
+      var google = { webClientId: clientId, mode: 'online' };
+      if (PATS.isIosApp) {
+        google.iOSClientId = iosClientId;
+        google.iOSServerClientId = clientId;
+      }
+      nativeGoogleReady = social.initialize({ google: google });
     }
   }
 

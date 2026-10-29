@@ -147,6 +147,9 @@ var PATS = (function () {
   // 改成比對雲端 version.json 的 androidMin，APP 太舊就請使用者下載新版。
   var isNativeApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' &&
     window.Capacitor.isNativePlatform());
+  // iOS 版用同一套原生程式（Capacitor），版本門檻改看 version.json 的 iosMin／iosUrl
+  var isIosApp = isNativeApp && typeof window.Capacitor.getPlatform === 'function' &&
+    window.Capacitor.getPlatform() === 'ios';
   var APP_VERSION_URL = 'https://vincent1021210.github.io/version.json';
   var APP_DOWNLOAD_URL = 'https://vincent1021210.github.io/download/PATS.apk';
   var APP_CHECK_GAP_MS = 60 * 60 * 1000;
@@ -183,16 +186,18 @@ var PATS = (function () {
       .then(function (results) {
         var info = results[0] || {};
         var remote = results[1] || {};
-        var min = Number(remote.androidMin || 0);
-        if (!min || Number(info.build || 0) >= min) {
+        var min = Number((isIosApp ? remote.iosMin : remote.androidMin) || 0);
+        var url = isIosApp ? remote.iosUrl : (remote.androidUrl || APP_DOWNLOAD_URL);
+        if (!min || !url || Number(info.build || 0) >= min) {
           return checkLiveUpdate(info).then(function () { return false; });
         }
         appUpdatePrompted = true;
         openModal({
           title: '請更新 PATS APP',
-          lead: '目前安裝的版本（' + (info.version || info.build) + '）太舊，部分功能可能無法使用。請下載並安裝新版，聊天紀錄不會遺失。',
-          confirmText: '前往下載',
-          onSubmit: function () { openExternal(remote.androidUrl || APP_DOWNLOAD_URL); }
+          lead: '目前安裝的版本（' + (info.version || info.build) + '）太舊，部分功能可能無法使用。請' +
+            (isIosApp ? '到 App Store 更新' : '下載並安裝新版') + '，聊天紀錄不會遺失。',
+          confirmText: isIosApp ? '前往更新' : '前往下載',
+          onSubmit: function () { openExternal(url); }
         });
         return true;
       })
@@ -213,7 +218,9 @@ var PATS = (function () {
         var mine = currentBuild();
         // build 是可排序的日期字串，只往新版走
         if (!latest || !remote.url || latest <= mine || latest === liveUpdateQueued) return;
-        if (Number(info.build || 0) < Number(remote.nativeMin || 0)) return;
+        var nativeMin = isIosApp ? remote.iosNativeMin : remote.nativeMin;
+        if (isIosApp && !nativeMin) return;
+        if (Number(info.build || 0) < Number(nativeMin || 0)) return;
         return updater.list()
           .then(function (res) {
             var bundles = (res && res.bundles) || [];
@@ -652,6 +659,14 @@ var PATS = (function () {
     var statusBar = nativePlugin('StatusBar');
     if (statusBar) statusBar.setStyle({ style: 'LIGHT' }).catch(function () { /* 舊版 Android 不支援 */ });
     document.documentElement.classList.add('is-native-app');
+
+    // 畫面包是 Android／iOS 共用的（Android 版拿掉了 viewport-fit），
+    // iPhone 瀏海與底部橫條要靠 viewport-fit=cover 讓 CSS 的 safe-area 生效
+    if (isIosApp) {
+      var viewport = document.querySelector('meta[name=viewport]');
+      if (viewport && !/viewport-fit/.test(viewport.content)) viewport.content += ', viewport-fit=cover';
+      document.documentElement.classList.add('is-ios-app');
+    }
   }
   if (isDesktopApp) document.documentElement.classList.add('is-desktop-app');
 
@@ -670,7 +685,7 @@ var PATS = (function () {
     openMenu: openMenu, closeMenu: closeMenu,
     checkForUpdate: checkForUpdate, cleanVersionParams: cleanVersionParams,
     perfMark: perfMark,
-    isNativeApp: isNativeApp, nativePlugin: nativePlugin, openExternal: openExternal,
+    isNativeApp: isNativeApp, isIosApp: isIosApp, nativePlugin: nativePlugin, openExternal: openExternal,
     isDesktopApp: isDesktopApp, desktop: desktop, DESKTOP_DOWNLOAD_URL: DESKTOP_DOWNLOAD_URL,
     isIosBrowser: isIosBrowser, showIosInstall: showIosInstall
   };

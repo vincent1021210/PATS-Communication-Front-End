@@ -1,0 +1,109 @@
+name: iOS APP
+
+# 沒有 Mac 也能打包 iPhone 版：在 GitHub 的 macOS 雲端機器上建置。
+# - 每次改到 APP 相關檔案：用模擬器建置一次，確認專案能編譯（不需要 Apple 帳號）
+# - 手動執行並勾選「上傳 TestFlight」：簽章並上傳到 App Store Connect（需要下列 Secrets）
+#
+# Secrets（repo → Settings → Secrets and variables → Actions）：
+#   APPLE_TEAM_ID      Apple Developer 的 Team ID（10 碼）
+#   ASC_KEY_ID         App Store Connect API 金鑰 ID（角色選 Admin，Xcode 才能自動建立簽章憑證）
+#   ASC_ISSUER_ID      App Store Connect API Issuer ID
+#   ASC_KEY_P8         下載的 AuthKey_XXXX.p8 檔案全文
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-app/ios/**'
+      - 'android-app/capacitor.config.json'
+      - 'android-app/package.json'
+      - 'android-app/package-lock.json'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+    inputs:
+      testflight:
+        description: '簽章並上傳 TestFlight'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # 同一份程式也推到 PATS-Communication-Front-End，只在網站 repo（公開、macOS 免費）跑
+    if: github.repository == 'vincent1021210/vincent1021210.github.io'
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        # 明寫 bash 才會開 pipefail，xcodebuild 失敗時 | tail 不會把錯誤吞掉
+        shell: bash
+        working-directory: android-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: android-app/package-lock.json
+
+      - name: 安裝套件並把網頁打包進 APP
+        run: |
+          npm ci --no-audit --no-fund
+          node scripts/sync-web.mjs
+          npx cap sync ios
+
+      - name: 模擬器建置（驗證能編譯）
+        if: ${{ !inputs.testflight }}
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+
+      - name: 簽章並上傳 TestFlight
+        if: ${{ inputs.testflight }}
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          if [ -z "$APPLE_TEAM_ID" ] || [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_P8" ]; then
+            echo "::error::還沒設定 Apple Secrets（APPLE_TEAM_ID、ASC_KEY_ID、ASC_ISSUER_ID、ASC_KEY_P8）"
+            exit 1
+          fi
+          KEY_PATH="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_KEY_P8" > "$KEY_PATH"
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $KEY_PATH -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+
+          # build 編號要一直往上加，APP 內的畫面更新門檻（version.json 的 iosLiveMin）也是比這個數字
+          BUILD_NUMBER=$((100 + GITHUB_RUN_NUMBER))
+
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/PATS.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" $AUTH archive | tail -n 40
+
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/PATS.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" $AUTH | tail -n 40
+          echo "已上傳 build $BUILD_NUMBER，約 10～30 分鐘後會出現在 App Store Connect → TestFlight"

@@ -2,7 +2,7 @@
 //
 // 輸出（推送到 GitHub Pages 後生效）：
 //   download/android-web/<build>.zip   與 APK 內建 www/ 相同內容
-//   download/android-web/latest.json   { build, url, checksum, nativeMin }
+//   download/android-web/latest.json   { build, url, checksum, nativeMin, iosNativeMin? }
 //
 // nativeMin 取自 version.json 的 androidLiveMin：這版畫面需要的最低 APK versionCode。
 // 畫面用到新的原生外掛時，要先發新 APK，再把 androidLiveMin 調高。
@@ -52,6 +52,9 @@ async function main() {
     checksum: crypto.createHash('sha256').update(data).digest('hex'),
     nativeMin
   };
+  // iOS 共用同一包畫面；iosLiveMin（iOS CFBundleVersion）沒填時 iOS APP 不套用畫面更新
+  const iosNativeMin = Number(versionInfo.iosLiveMin || 0);
+  if (iosNativeMin) latest.iosNativeMin = iosNativeMin;
   fs.writeFileSync(path.join(outDir, 'latest.json'), JSON.stringify(latest, null, 2) + '\n');
   console.log('已產生 Android 畫面更新包 ' + zipName + '（' + (data.length / 1024).toFixed(0) + ' KB，需 APK versionCode ≥ ' + nativeMin + '）');
 }
