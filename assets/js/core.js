@@ -299,8 +299,8 @@ var PATS = (function () {
 
   function showIosInstall() {
     openModal({
-      title: '安裝到 iPhone 主畫面',
-      lead: '1. 用 Safari 開啟這個網頁\n2. 點下方的「分享」按鈕（方框加向上箭頭）\n3. 選「加入主畫面」，再按「新增」\n\n之後從主畫面的 PATS 圖示開啟，就像一般 APP：全螢幕、畫面存在手機裡、開啟更快，有新版會自動更新。',
+      title: '安裝到 iPhone／iPad 主畫面',
+      lead: '1. 用 Safari 開啟這個網頁（iPhone 或 iPad 都可以）\n2. 點「分享」按鈕（方框加向上箭頭）：iPhone 在畫面下方，iPad 在畫面上方\n3. 選「加入主畫面」，再按「新增」\n\n之後從主畫面的 PATS 圖示開啟，就像一般 APP：全螢幕、畫面存在裝置裡、開啟更快，有新版會自動更新。',
       confirmText: '知道了',
       onSubmit: function () { closeModal(); }
     });

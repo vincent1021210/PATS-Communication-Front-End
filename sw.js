@@ -10,7 +10,7 @@
 
 'use strict';
 
-var BUILD = '20261030b';
+var BUILD = '20261030c';
 var CACHE = 'pats-shell-' + BUILD;
 var RUNTIME = 'pats-runtime';
 // 畫面用到的外部字型與 socket.io，第一次連網時存下來
