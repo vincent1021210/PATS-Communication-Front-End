@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://vincent1021210.github.io/PATS-Recommendation/</loc>
+    <lastmod>2026-10-30</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://vincent1021210.github.io/PATS-Recommendation/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vincent1021210.github.io/PATS-Recommendation/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vincent1021210.github.io/PATS-Recommendation/"/>
+    <image:image><image:loc>https://vincent1021210.github.io/PATS-Recommendation/assets/img/og-image.png</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://vincent1021210.github.io/PATS-Recommendation/en/</loc>
+    <lastmod>2026-10-30</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://vincent1021210.github.io/PATS-Recommendation/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vincent1021210.github.io/PATS-Recommendation/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vincent1021210.github.io/PATS-Recommendation/"/>
+  </url>
+  <url>
+    <loc>https://vincent1021210.github.io/PATS-Recommendation/faq/</loc>
+    <lastmod>2026-10-30</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://vincent1021210.github.io/PATS-Recommendation/faq/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vincent1021210.github.io/PATS-Recommendation/en/faq/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vincent1021210.github.io/PATS-Recommendation/faq/"/>
+  </url>
+  <url>
+    <loc>https://vincent1021210.github.io/PATS-Recommendation/en/faq/</loc>
+    <lastmod>2026-10-30</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://vincent1021210.github.io/PATS-Recommendation/faq/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vincent1021210.github.io/PATS-Recommendation/en/faq/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vincent1021210.github.io/PATS-Recommendation/faq/"/>
+  </url>
+  <url>
+    <loc>https://vincent1021210.github.io/PATS-Recommendation/guides/no-line/</loc>
+    <lastmod>2026-10-30</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://vincent1021210.github.io/PATS-Recommendation/guides/no-line/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vincent1021210.github.io/PATS-Recommendation/en/guides/no-line/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vincent1021210.github.io/PATS-Recommendation/guides/no-line/"/>
+  </url>
+  <url>
+    <loc>https://vincent1021210.github.io/PATS-Recommendation/en/guides/no-line/</loc>
+    <lastmod>2026-10-30</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://vincent1021210.github.io/PATS-Recommendation/guides/no-line/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vincent1021210.github.io/PATS-Recommendation/en/guides/no-line/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vincent1021210.github.io/PATS-Recommendation/guides/no-line/"/>
+  </url>
+  <url>
+    <loc>https://vincent1021210.github.io/PATS-Recommendation/guides/get-started/</loc>
+    <lastmod>2026-10-30</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://vincent1021210.github.io/PATS-Recommendation/guides/get-started/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vincent1021210.github.io/PATS-Recommendation/en/guides/get-started/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vincent1021210.github.io/PATS-Recommendation/guides/get-started/"/>
+  </url>
+  <url>
+    <loc>https://vincent1021210.github.io/PATS-Recommendation/en/guides/get-started/</loc>
+    <lastmod>2026-10-30</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://vincent1021210.github.io/PATS-Recommendation/guides/get-started/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://vincent1021210.github.io/PATS-Recommendation/en/guides/get-started/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://vincent1021210.github.io/PATS-Recommendation/guides/get-started/"/>
+  </url>
+</urlset>

@@ -1,0 +1,32 @@
+# PATS
+
+> PATS 是免費、免安裝的網頁通訊工具：不需要 LINE、不需要手機號碼，用瀏覽器以 Google 帳號或電子郵件登入，就能私訊、建群組、傳照片和語音視訊通話。PATS is a free, no-install web messenger: no LINE and no phone number needed; sign in from any browser to chat, share photos and make voice/video calls.
+
+重點事實 / Key facts:
+
+- 網址 / App URL: https://vincent1021210.github.io/
+- 費用 / Price: 免費 / Free
+- 平台 / Platform: 任何現代瀏覽器（Chrome、Edge、Safari、Firefox），手機、平板、電腦皆可 / Any modern browser on phone, tablet or computer
+- 註冊 / Sign-up: Google 帳號或電子郵件＋驗證碼，不需手機號碼；管理員可要求邀請碼 / Google account or email with verification code; no phone number; optional invite code
+- 功能 / Features: 私訊、群組、搜尋、封存、傳送與下載圖片（保留 20 天）、一對一語音與視訊通話；任何人都能註冊使用 / Anyone can sign up
+- 介面語言 / Interface language: 繁體中文 / Traditional Chinese
+- 技術 / Stack: 前端 GitHub Pages 靜態網站，後端 Google Apps Script，資料存於 Google 試算表與雲端硬碟，全程 HTTPS
+
+## 繁體中文
+
+- [PATS｜沒有 LINE 也能聊天的免安裝網頁通訊](https://vincent1021210.github.io/PATS-Recommendation/): PATS 介紹、適合誰、功能、與 LINE 比較、限制
+- [3 分鐘開始使用 PATS｜註冊與聊天圖文教學](https://vincent1021210.github.io/PATS-Recommendation/guides/get-started/): 3 步驟註冊與開始聊天的圖文教學
+- [沒有 LINE 怎麼跟同學、家人聯絡？5 種方法比較](https://vincent1021210.github.io/PATS-Recommendation/guides/no-line/): 沒有 LINE 時 5 種聯絡方式比較
+- [PATS 常見問題｜免費嗎？要手機號碼嗎？能視訊嗎？](https://vincent1021210.github.io/PATS-Recommendation/faq/): 完整常見問題
+
+## English
+
+- [PATS | Chat Without LINE – Free Browser Messenger](https://vincent1021210.github.io/PATS-Recommendation/en/): Overview, audience, features, comparison with LINE, limitations
+- [Get Started with PATS in 3 Minutes | Sign-up Guide](https://vincent1021210.github.io/PATS-Recommendation/en/guides/get-started/): Step-by-step sign-up guide
+- [No LINE? 5 Ways to Keep in Touch with Classmates and Family](https://vincent1021210.github.io/PATS-Recommendation/en/guides/no-line/): 5 ways to keep in touch without LINE
+- [PATS FAQ | Free? Phone Number? Video Calls?](https://vincent1021210.github.io/PATS-Recommendation/en/faq/): Full FAQ
+
+## Optional
+
+- [llms-full.txt](https://vincent1021210.github.io/PATS-Recommendation/llms-full.txt): 全站內容純文字版 / Full site content as plain text
+- [PATS App](https://vincent1021210.github.io/): 登入與使用 / Sign in and use PATS

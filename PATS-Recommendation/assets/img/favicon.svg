@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="PATS">
+  <defs>
+    <linearGradient id="pats-ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="0.28" stop-color="#7c3aed"/>
+      <stop offset="0.52" stop-color="#ec4899"/>
+      <stop offset="0.76" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#10b981"/>
+    </linearGradient>
+    <linearGradient id="pats-text" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1e3a8a"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+    <filter id="pats-shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#1e293b" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <path filter="url(#pats-shadow)"
+        d="M120 72 H392 A72 72 0 0 1 464 144 V312 A72 72 0 0 1 392 384 H200 L118 452 A8 8 0 0 1 105 445 L118 384 A72 72 0 0 1 48 312 V144 A72 72 0 0 1 120 72 Z"
+        fill="#ffffff" stroke="url(#pats-ring)" stroke-width="22" stroke-linejoin="round"/>
+
+  <text x="256" y="262" text-anchor="middle" dominant-baseline="middle"
+        font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="124" font-weight="800" letter-spacing="4"
+        fill="url(#pats-text)">PATS</text>
+</svg>

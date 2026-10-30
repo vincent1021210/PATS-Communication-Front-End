@@ -1,0 +1,637 @@
+# PATS — 全站內容 / Full site content
+
+最後更新 / Last updated: 2026-10-30
+
+---
+
+# 沒有 LINE，也能跟大家聊天
+
+URL: https://vincent1021210.github.io/PATS-Recommendation/
+
+PATS 是免費、免安裝的網頁通訊工具。沒有 LINE、沒有手機號碼也能用：打開瀏覽器、用 Google 帳號登入，就能私訊、建群組、傳照片和語音視訊通話。
+
+## PATS 是什麼？
+
+PATS 是一個在瀏覽器裡執行的通訊平台，不需要下載 App，也不需要手機號碼。只要有 Google 帳號或電子郵件，在手機、平板或電腦打開 [vincent1021210.github.io](https://vincent1021210.github.io/) 就能開始聊天。
+
+它適合沒有 LINE、不能安裝 App，或不想公開電話號碼的人。訊息、照片、群組和語音視訊通話都在同一個網頁裡完成，網站推出新版時也會自動更新。
+
+## 誰適合用 PATS？
+
+只要「不方便用 LINE 或一般通訊 App」，PATS 就是很好的替代方案，特別適合以下這些人：
+- 沒有 LINE，或不想安裝任何通訊軟體的人
+- 學生：手機不能裝 App、只能用學校電腦或平板
+- 沒有手機號碼，或不想公開自己電話的人
+- 手機容量不足、舊手機裝不了新版 App
+- 家人與長輩：不會裝 App，打開網址就能跟家人聊天
+
+## PATS 有哪些功能？
+
+PATS 提供私訊、群組、傳送與下載圖片、語音與視訊通話，而且任何人都能註冊使用。
+
+### 私訊與群組
+
+一對一私訊，或建立群組一起討論，還能搜尋訊息與聯絡人、封存不常用的對話。
+
+### 傳送與下載圖片
+
+手機直接拍照或從相簿選圖，自動壓縮後傳送；收到的圖片可以放大檢視、下載保存。
+
+### 語音與視訊通話
+
+在瀏覽器裡就能通話，可靜音、關閉鏡頭、切換前後鏡頭，不用另外裝軟體。
+
+### 不需要手機號碼
+
+用 Google 帳號一鍵登入，或用電子郵件加密碼註冊，不必公開自己的電話。
+
+### 誰都能用
+
+不限學校或身分，任何人都能用 Google 帳號或電子郵件註冊，跟家人、朋友、同學都能聊。
+
+### 自動更新
+
+網站有新版本時會自動更新，不用到商店更新 App，也不佔手機容量。
+
+## 怎麼開始使用？（3 個步驟）
+
+打開網站、建立帳號、加入聯絡人，大約 3 分鐘就能開始聊天。
+
+### 打開 PATS 網站
+
+用手機、平板或電腦的瀏覽器（Chrome、Edge、Safari、Firefox）前往 [vincent1021210.github.io](https://vincent1021210.github.io/)，不需要下載任何 App。
+
+### 建立帳號
+
+點「立即註冊」，用 Google 帳號一鍵建立；或填寫顯示名稱、電子郵件和密碼（至少 8 個字元），再輸入寄到信箱的 6 位數驗證碼。管理員有設定邀請碼時，需要一併填寫。
+
+### 加入聯絡人，開始聊天
+
+登入後點「發起新對話」找到對方，就能傳訊息、傳照片，或直接撥打語音、視訊通話。想要像 App 一樣快速開啟，可以在手機瀏覽器選「加入主畫面」。
+
+[看完整圖文教學 →](https://vincent1021210.github.io/PATS-Recommendation/guides/get-started/)
+
+## PATS 和 LINE 等通訊 App 有什麼不同？
+
+最大的差別是 PATS 不用安裝、不需要手機號碼，用瀏覽器就能聊天；但它沒有貼圖商店，功能專注在訊息與通話。
+
+PATS 與一般通訊 App 比較
+
+| 項目 | PATS | 一般通訊 App（如 LINE） |
+| --- | --- | --- |
+| 需要安裝 App | 不需要，用瀏覽器即可 | 需要下載安裝並定期更新 |
+| 需要手機號碼 | 不需要 | 通常需要 |
+| 在電腦上使用 | 打開瀏覽器就能用 | 通常要另外安裝電腦版 |
+| 佔用手機容量 | 幾乎不佔 | 會佔用並隨聊天紀錄增加 |
+| 費用 | 免費 | 多數免費 |
+| 貼圖商店 | 沒有 | 通常有 |
+
+## PATS 有什麼限制？
+
+PATS 需要網路，而且雙方都要有帳號；以下是使用前值得知道的事：
+- 需要網路連線才能使用。
+- 對方也需要有 PATS 帳號，才能互相聊天。
+- 聊天中的圖片保留 20 天後自動過期，重要圖片請先下載。
+- 沒有貼圖商店和動態牆，專注在訊息與通話。
+- 部分學校或團體會要求邀請碼才能註冊。
+
+## 常見問題
+
+### PATS 要錢嗎？
+
+PATS 免費使用，沒有付費方案，也沒有內購。只要有網路和瀏覽器就能用。
+
+### 沒有 LINE 可以用 PATS 嗎？
+
+可以。PATS 是獨立的通訊平台，不需要 LINE、Messenger、WhatsApp 或任何其他通訊軟體，雙方都有 PATS 帳號就能互相傳訊息與通話。
+
+### 需要下載 App 嗎？
+
+不需要。PATS 直接在瀏覽器裡執行，打開 vincent1021210.github.io 就能使用，不佔手機容量，也不用手動更新；網站推出新版時會自動更新。iPhone 用 Safari 打開網站，點「分享」再選「加入主畫面」，之後就像一般 APP：全螢幕、畫面存在手機裡。Android 也可以下載 PATS Android APP（APK）。Windows 另有電腦版，可以開機自動啟動、收到新訊息時跳出桌面通知。
+
+### 沒有手機號碼可以註冊嗎？
+
+可以。PATS 不需要手機號碼，用 Google 帳號一鍵註冊，或用電子郵件加密碼註冊（會寄 6 位數驗證碼到信箱確認）。
+
+### 可以在電腦上用嗎？
+
+可以。Windows、Mac、Chromebook 的瀏覽器都能使用，手機和平板也可以。在學校或公用電腦使用後，記得登出。
+
+### 可以傳照片嗎？照片會保留多久？
+
+可以。手機可以直接拍照或從相簿選圖，系統會自動壓縮後傳送；收到的圖片可以點開放大並下載保存。聊天中的圖片會保留 20 天，之後自動過期，重要的圖片請先下載。
+
+[看全部常見問題 →](https://vincent1021210.github.io/PATS-Recommendation/faq/)
+
+現在就開始，不用安裝任何東西
+
+打開瀏覽器、用 Google 帳號登入，3 分鐘內就能和朋友聊天。
+
+[免費開始使用](https://vincent1021210.github.io/)
+
+---
+
+# PATS 常見問題
+
+URL: https://vincent1021210.github.io/PATS-Recommendation/faq/
+
+整理 PATS 網頁通訊的常見問題：是否免費、沒有 LINE 能不能用、需不需要手機號碼、支援哪些瀏覽器、照片保留多久、誰可以使用與資料安全。
+
+這裡整理大家最常問的 PATS 問題。簡單來說：PATS 免費、免安裝、不需要手機號碼，用瀏覽器就能私訊、建群組、傳照片和視訊通話。
+
+### PATS 要錢嗎？
+
+PATS 免費使用，沒有付費方案，也沒有內購。只要有網路和瀏覽器就能用。
+
+### 沒有 LINE 可以用 PATS 嗎？
+
+可以。PATS 是獨立的通訊平台，不需要 LINE、Messenger、WhatsApp 或任何其他通訊軟體，雙方都有 PATS 帳號就能互相傳訊息與通話。
+
+### 需要下載 App 嗎？
+
+不需要。PATS 直接在瀏覽器裡執行，打開 vincent1021210.github.io 就能使用，不佔手機容量，也不用手動更新；網站推出新版時會自動更新。iPhone 用 Safari 打開網站，點「分享」再選「加入主畫面」，之後就像一般 APP：全螢幕、畫面存在手機裡。Android 也可以下載 PATS Android APP（APK）。Windows 另有電腦版，可以開機自動啟動、收到新訊息時跳出桌面通知。
+
+### 沒有手機號碼可以註冊嗎？
+
+可以。PATS 不需要手機號碼，用 Google 帳號一鍵註冊，或用電子郵件加密碼註冊（會寄 6 位數驗證碼到信箱確認）。
+
+### 可以在電腦上用嗎？
+
+可以。Windows、Mac、Chromebook 的瀏覽器都能使用，手機和平板也可以。在學校或公用電腦使用後，記得登出。
+
+### 支援哪些瀏覽器？
+
+建議使用最新版的 Chrome、Edge、Safari 或 Firefox。語音和視訊通話需要允許瀏覽器使用麥克風與相機。
+
+### 可以傳照片嗎？照片會保留多久？
+
+可以。手機可以直接拍照或從相簿選圖，系統會自動壓縮後傳送；收到的圖片可以點開放大並下載保存。聊天中的圖片會保留 20 天，之後自動過期，重要的圖片請先下載。
+
+### 可以語音或視訊通話嗎？
+
+可以。PATS 支援一對一語音與視訊通話，通話中可以靜音、關閉鏡頭或切換前後鏡頭，不需要另外安裝任何軟體。
+
+### 可以建立群組嗎？
+
+可以。除了一對一私訊，也能建立群組一起討論；不常用的對話可以封存，需要時再取消封存。
+
+### 誰可以使用 PATS？
+
+任何人都可以使用。PATS 不限年齡、學校或身分，只要有 Google 帳號或電子郵件就能註冊，學生、上班族、家人朋友都能用。
+
+### 註冊時為什麼要邀請碼？
+
+只有管理員啟用邀請碼時，註冊才需要填寫，用來確保只有學校或團體成員能加入。請向老師或管理員索取；沒有啟用時不會出現這個欄位。
+
+### 我的資料存在哪裡？安全嗎？
+
+PATS 的後端使用 Google Apps Script，訊息存在 Google 試算表，圖片存在 Google 雲端硬碟。連線全程使用 HTTPS 加密，帳號密碼以雜湊方式儲存，不會以明碼保存。
+
+### 忘記密碼怎麼辦？
+
+在登入頁點「忘記密碼」，輸入註冊時的電子郵件，收到驗證碼後就能設定新密碼。使用 Google 登入的人不需要密碼。
+
+還有問題？直接試試看最快
+
+註冊只要一分鐘，不需要手機號碼。
+
+[免費開始使用](https://vincent1021210.github.io/)
+
+---
+
+# 沒有 LINE 怎麼跟同學、家人聯絡？5 種方法比較
+
+URL: https://vincent1021210.github.io/PATS-Recommendation/guides/no-line/
+
+沒有 LINE、不能裝 App 或沒有手機號碼，還能怎麼聯絡同學和家人？比較簡訊、電子郵件、社群私訊、學校平台與免安裝網頁通訊 PATS 的優缺點。
+
+結論：沒有 LINE 時，最接近 LINE 體驗的做法是使用免安裝的網頁通訊工具，例如 [PATS](https://vincent1021210.github.io/)：用瀏覽器登入就能私訊、建群組、傳照片和視訊通話，不需要手機號碼。如果只是偶爾聯絡，簡訊或電子郵件也可以。
+
+很多人沒有 LINE 的原因各不相同：手機不能安裝 App、家長還不讓用通訊軟體、沒有自己的手機號碼，或手機容量不夠。以下比較 5 種常見的聯絡方式，幫你找到最適合的方法。
+
+## 1. 簡訊與電話
+
+優點是幾乎每支手機都能用；缺點是需要手機號碼，傳照片不方便，也很難多人一起討論。
+
+## 2. 電子郵件
+
+只要有信箱就能用，適合傳檔案和正式通知；但回覆慢，不適合即時聊天或群組討論。
+
+## 3. 社群網站私訊
+
+Instagram、Facebook 等可以私訊，但通常要安裝 App、有年齡限制，也容易被動態和廣告分心。
+
+## 4. 學校的學習平台
+
+部分學校平台有留言或訊息功能，適合交作業和公告；但通常不支援即時聊天、傳照片或視訊。
+
+## 5. 免安裝的網頁通訊：PATS
+
+PATS 用瀏覽器就能使用，不用安裝 App，也不需要手機號碼，是最接近 LINE 的替代方案。
+- 私訊與群組聊天，可以搜尋訊息、封存對話
+- 手機拍照直接傳送，收到的圖片可以下載保存
+- 一對一語音與視訊通話
+- 手機、平板、學校電腦都能登入
+- 任何人都能註冊，家人、朋友、同學都能用
+
+## 5 種方法一次比較
+
+沒有 LINE 時的聯絡方式比較
+
+| 方法 | 需要手機號碼 | 即時聊天 | 傳照片 | 群組 | 視訊通話 |
+| --- | --- | --- | --- | --- | --- |
+| 簡訊與電話 | 需要 | 可以 | 不方便 | 困難 | 視手機而定 |
+| 電子郵件 | 不需要 | 不行 | 可以 | 可以（群組信） | 不行 |
+| 社群網站私訊 | 通常需要 | 可以 | 可以 | 可以 | 可以 |
+| 學校學習平台 | 不需要 | 多半不行 | 視平台而定 | 視平台而定 | 多半不行 |
+| PATS 網頁通訊 | 不需要 | 可以 | 可以 | 可以 | 可以 |
+
+## 邀請朋友一起用 PATS 的小技巧
+- 把網址 vincent1021210.github.io 傳給同學，請對方用 Google 帳號註冊。
+- 在手機瀏覽器選「加入主畫面」，之後像 App 一樣一鍵打開。
+- 用學校或公用電腦登入後，記得登出。
+- 重要照片收到後先下載，聊天中的圖片會在 20 天後過期。
+
+沒有 LINE？現在就用 PATS
+
+免安裝、不需要手機號碼，打開瀏覽器就能聊天。
+
+[免費開始使用](https://vincent1021210.github.io/)
+
+延伸閱讀：[3 分鐘開始使用 PATS](https://vincent1021210.github.io/PATS-Recommendation/guides/get-started/)、[PATS 常見問題](https://vincent1021210.github.io/PATS-Recommendation/faq/)
+
+---
+
+# 3 分鐘開始使用 PATS
+
+URL: https://vincent1021210.github.io/PATS-Recommendation/guides/get-started/
+
+3 個步驟開始使用 PATS 網頁通訊：用瀏覽器打開網站、用 Google 帳號或電子郵件註冊、加入聯絡人後就能傳訊息、傳照片和視訊通話。
+
+開始使用 PATS 只要 3 個步驟：用瀏覽器打開 [vincent1021210.github.io](https://vincent1021210.github.io/)、用 Google 帳號或電子郵件註冊、加入聯絡人後開始聊天。全程不需要下載 App 或手機號碼。
+
+## 開始前你需要
+- 一台能上網的手機、平板或電腦
+- 最新版的 Chrome、Edge、Safari 或 Firefox
+- 一個 Google 帳號，或任何可以收信的電子郵件
+- （若學校有設定）管理員提供的邀請碼
+
+## 步驟
+
+### 打開 PATS 網站
+
+用手機、平板或電腦的瀏覽器（Chrome、Edge、Safari、Firefox）前往 [vincent1021210.github.io](https://vincent1021210.github.io/)，不需要下載任何 App。
+
+### 建立帳號
+
+點「立即註冊」，用 Google 帳號一鍵建立；或填寫顯示名稱、電子郵件和密碼（至少 8 個字元），再輸入寄到信箱的 6 位數驗證碼。管理員有設定邀請碼時，需要一併填寫。
+
+### 加入聯絡人，開始聊天
+
+登入後點「發起新對話」找到對方，就能傳訊息、傳照片，或直接撥打語音、視訊通話。想要像 App 一樣快速開啟，可以在手機瀏覽器選「加入主畫面」。
+
+## 在手機上像 App 一樣使用
+
+手機瀏覽器打開 PATS 的畫面
+- iPhone（Safari）：點下方「分享」按鈕，選「加入主畫面」。
+- Android（Chrome）：點右上角「⋮」，選「加到主畫面」。
+
+## 接下來可以做什麼
+- 建立群組，和同學一起討論報告
+- 傳照片：點輸入框旁的圖片按鈕，可以拍照或從相簿選
+- 撥打語音或視訊通話：在對話上方點電話或攝影機圖示
+- 邀請家人或朋友：把網址傳給對方，請他用 Google 帳號註冊
+
+## 遇到問題？
+- 收不到驗證碼：檢查垃圾郵件匣，或改用 Google 帳號登入。
+- 通話沒有聲音或畫面：確認瀏覽器已允許使用麥克風與相機。
+- 畫面怪怪的：重新整理頁面，網站會自動載入最新版本。
+
+準備好了嗎？
+
+打開 PATS，用 Google 帳號一鍵註冊。
+
+[開啟 PATS](https://vincent1021210.github.io/)
+
+延伸閱讀：[沒有 LINE 怎麼跟同學、家人聯絡？](https://vincent1021210.github.io/PATS-Recommendation/guides/no-line/)、[PATS 常見問題](https://vincent1021210.github.io/PATS-Recommendation/faq/)
+
+---
+
+# No LINE? You can still chat with everyone
+
+URL: https://vincent1021210.github.io/PATS-Recommendation/en/
+
+PATS is a free messenger that runs in your browser. No LINE, no app and no phone number: sign in with Google to chat, share photos and make video calls.
+
+## What is PATS?
+
+PATS is a messaging platform that runs in your web browser. It needs no app download and no phone number: with a Google account or an email address, open [vincent1021210.github.io](https://vincent1021210.github.io/) on any phone, tablet or computer and start chatting.
+
+It is built for people who do not have LINE, cannot install apps, or do not want to share a phone number. Messages, photos, groups and voice or video calls all happen in one web page, and new versions load automatically.
+
+## Who is PATS for?
+
+If LINE or a regular chat app does not work for you, PATS is a simple alternative. It is especially useful for:
+- People who do not have LINE or prefer not to install any chat app
+- Students whose phones cannot install apps, or who only use school computers or tablets
+- People without a phone number, or who do not want to share it
+- Anyone with low phone storage or an older phone that cannot run new apps
+- Family members and older relatives who cannot install apps but can open a web address
+
+## What can PATS do?
+
+PATS offers private and group chats, photo sending and downloading, voice and video calls, and anyone can sign up.
+
+### Private and group chats
+
+Message one person or a whole group, search messages and contacts, and archive chats you rarely use.
+
+### Send and save photos
+
+Take a photo or pick one from your gallery; it is compressed automatically. Open received photos full size and download them.
+
+### Voice and video calls
+
+Call right in the browser, with mute, camera off and front/rear camera switching. No extra software.
+
+### No phone number
+
+Sign in with Google in one tap, or register with email and password. Your phone number stays private.
+
+### Open to everyone
+
+No school or membership required. Anyone can sign up with a Google account or email and chat with family, friends or classmates.
+
+### Always up to date
+
+New versions load automatically. No app store updates and no storage used on your phone.
+
+## How do I start? (3 steps)
+
+Open the site, create an account and add a contact. You can be chatting in about 3 minutes.
+
+### Open the PATS website
+
+Open [vincent1021210.github.io](https://vincent1021210.github.io/) in a browser (Chrome, Edge, Safari or Firefox) on your phone, tablet or computer. Nothing to download.
+
+### Create an account
+
+Choose “Sign up” (立即註冊) and use your Google account, or enter a display name, email and password (at least 8 characters), then type the 6-digit code sent to your inbox. Enter an invite code if your administrator requires one.
+
+### Add a contact and start chatting
+
+After signing in, tap “New conversation” (發起新對話) to find someone, then send messages and photos or start a voice or video call. Add the site to your home screen to open it like an app.
+
+[Read the full illustrated guide →](https://vincent1021210.github.io/PATS-Recommendation/en/guides/get-started/)
+
+## How is PATS different from LINE and other chat apps?
+
+The main difference: PATS needs no install and no phone number, it works in the browser. It has no sticker store and focuses on messages and calls.
+
+PATS compared with a typical chat app
+
+| Item | PATS | Typical chat app (e.g. LINE) |
+| --- | --- | --- |
+| App install | Not needed, runs in the browser | Download and regular updates |
+| Phone number | Not needed | Usually required |
+| On a computer | Just open a browser | Usually a separate desktop app |
+| Phone storage | Almost none | Grows with chat history |
+| Price | Free | Mostly free |
+| Sticker store | No | Usually yes |
+
+## What are the limitations?
+
+PATS needs an internet connection and both people need an account. Good to know before you start:
+- An internet connection is required.
+- The other person also needs a PATS account.
+- Photos in chats expire after 20 days, so download the important ones.
+- No sticker store or social feed; PATS focuses on messages and calls.
+- The app interface is currently in Traditional Chinese.
+- Some schools or groups require an invite code to sign up.
+
+## Frequently asked questions
+
+### Is PATS free?
+
+Yes. PATS is free to use, with no paid plans and no in-app purchases. All you need is a browser and an internet connection.
+
+### Can I use PATS without LINE?
+
+Yes. PATS is a standalone messaging platform. It does not need LINE, Messenger, WhatsApp or any other chat app; both people just need a PATS account.
+
+### Do I need to download an app?
+
+No. PATS runs in your web browser at vincent1021210.github.io. It takes no storage on your phone, and new versions are applied automatically. On iPhone, open the site in Safari, tap Share, then Add to Home Screen — it then opens full-screen like an app, with the interface stored on your phone. On Android you can also install the optional PATS app (APK). There is also a Windows desktop app that can start with your computer and show desktop notifications for new messages.
+
+### Can I sign up without a phone number?
+
+Yes. PATS never asks for a phone number. Sign up with one tap using a Google account, or with an email address and password (confirmed by a 6-digit code sent to your inbox).
+
+### Does PATS work on a computer?
+
+Yes. It works in browsers on Windows, Mac and Chromebook, as well as on phones and tablets. Remember to sign out when you use a shared or school computer.
+
+### Is the PATS app available in English?
+
+The PATS app interface is currently in Traditional Chinese. You can still chat in any language, and this guide explains each step in English.
+
+[See all questions →](https://vincent1021210.github.io/PATS-Recommendation/en/faq/)
+
+Start now, nothing to install
+
+Open your browser, sign in with Google and chat with friends in under 3 minutes.
+
+[Start free](https://vincent1021210.github.io/)
+
+---
+
+# PATS frequently asked questions
+
+URL: https://vincent1021210.github.io/PATS-Recommendation/en/faq/
+
+PATS browser messenger FAQ: is it free, does it work without LINE or a phone number, which browsers work, how long photos are kept, who can use it and data safety.
+
+The most common questions about PATS. In short: PATS is free, needs no install and no phone number, and lets you chat, create groups, share photos and make video calls in the browser.
+
+### Is PATS free?
+
+Yes. PATS is free to use, with no paid plans and no in-app purchases. All you need is a browser and an internet connection.
+
+### Can I use PATS without LINE?
+
+Yes. PATS is a standalone messaging platform. It does not need LINE, Messenger, WhatsApp or any other chat app; both people just need a PATS account.
+
+### Do I need to download an app?
+
+No. PATS runs in your web browser at vincent1021210.github.io. It takes no storage on your phone, and new versions are applied automatically. On iPhone, open the site in Safari, tap Share, then Add to Home Screen — it then opens full-screen like an app, with the interface stored on your phone. On Android you can also install the optional PATS app (APK). There is also a Windows desktop app that can start with your computer and show desktop notifications for new messages.
+
+### Can I sign up without a phone number?
+
+Yes. PATS never asks for a phone number. Sign up with one tap using a Google account, or with an email address and password (confirmed by a 6-digit code sent to your inbox).
+
+### Does PATS work on a computer?
+
+Yes. It works in browsers on Windows, Mac and Chromebook, as well as on phones and tablets. Remember to sign out when you use a shared or school computer.
+
+### Which browsers are supported?
+
+Use an up-to-date version of Chrome, Edge, Safari or Firefox. Voice and video calls require allowing microphone and camera access in the browser.
+
+### Can I send photos, and how long are they kept?
+
+Yes. On a phone you can take a photo or pick one from your gallery; it is compressed automatically before sending. Received photos can be opened full size and downloaded. Photos in chats are kept for 20 days and then expire, so download the important ones.
+
+### Can I make voice or video calls?
+
+Yes. PATS supports one-to-one voice and video calls in the browser. During a call you can mute, turn off the camera or switch between front and rear cameras.
+
+### Can I create group chats?
+
+Yes. Besides private messages you can create groups. Conversations you rarely use can be archived and restored later.
+
+### Who can use PATS?
+
+Anyone. PATS has no age, school or membership restrictions; all you need is a Google account or an email address. Students, workers, family and friends can all use it.
+
+### Why does sign-up ask for an invite code?
+
+Only when an administrator turns on invite codes, to make sure only members of a school or group can join. Ask your teacher or administrator for the code; otherwise the field is not shown.
+
+### Where is my data stored? Is it safe?
+
+The PATS backend runs on Google Apps Script. Messages are stored in Google Sheets and photos in Google Drive. All traffic uses HTTPS, and passwords are stored as hashes, never in plain text.
+
+### Is the PATS app available in English?
+
+The PATS app interface is currently in Traditional Chinese. You can still chat in any language, and this guide explains each step in English.
+
+### What if I forget my password?
+
+On the sign-in page choose “Forgot password” (忘記密碼), enter your email, and set a new password with the verification code you receive. Google sign-in users do not need a password.
+
+Still unsure? Trying it is fastest
+
+Sign-up takes about a minute and no phone number.
+
+[Start free](https://vincent1021210.github.io/)
+
+---
+
+# No LINE? 5 ways to keep in touch with classmates and family
+
+URL: https://vincent1021210.github.io/PATS-Recommendation/en/guides/no-line/
+
+No LINE, no app installs or no phone number? Compare text messages, email, social media DMs, school platforms and PATS, a free browser messenger, to stay in touch.
+
+Short answer: without LINE, the closest experience is a no-install web messenger such as [PATS](https://vincent1021210.github.io/). Sign in from a browser to chat, create groups, share photos and make video calls, with no phone number. For occasional contact, text messages or email also work.
+
+People skip LINE for many reasons: their phone cannot install apps, parents do not allow chat apps yet, they have no phone number of their own, or storage is full. Here are 5 common options compared.
+
+## 1. Text messages and phone calls
+
+Works on almost every phone, but needs a phone number, is awkward for photos and hard for group discussion.
+
+## 2. Email
+
+Anyone with an inbox can use it, and it is good for files and formal notices, but replies are slow and it is not made for live chat.
+
+## 3. Social media direct messages
+
+Instagram or Facebook can send DMs, but usually need an app, have age limits and come with feeds and ads.
+
+## 4. School learning platforms
+
+Some have comments or messages for homework and announcements, but rarely live chat, photos or video.
+
+## 5. A no-install web messenger: PATS
+
+PATS works in the browser with no app and no phone number, making it the closest alternative to LINE.
+- Private and group chats with message search and archiving
+- Send photos straight from your camera and download received ones
+- One-to-one voice and video calls
+- Sign in from phones, tablets or school computers
+- Anyone can sign up: family, friends and classmates
+
+## All 5 options compared
+
+Ways to keep in touch without LINE
+
+| Option | Phone number | Live chat | Photos | Groups | Video calls |
+| --- | --- | --- | --- | --- | --- |
+| Text and phone | Required | Yes | Awkward | Hard | Depends on phone |
+| Email | Not needed | No | Yes | Yes (group email) | No |
+| Social media DMs | Usually | Yes | Yes | Yes | Yes |
+| School platform | Not needed | Mostly no | Depends | Depends | Mostly no |
+| PATS web messenger | Not needed | Yes | Yes | Yes | Yes |
+
+## Tips for inviting friends to PATS
+- Send the address vincent1021210.github.io and ask friends to sign up with Google.
+- Use “Add to Home Screen” in your phone browser to open it like an app.
+- Sign out after using a school or shared computer.
+- Download important photos; chat photos expire after 20 days.
+
+No LINE? Try PATS now
+
+No install and no phone number. Just open your browser.
+
+[Start free](https://vincent1021210.github.io/)
+
+Read next: [Get started with PATS in 3 minutes](https://vincent1021210.github.io/PATS-Recommendation/en/guides/get-started/), [PATS FAQ](https://vincent1021210.github.io/PATS-Recommendation/en/faq/)
+
+---
+
+# Get started with PATS in 3 minutes
+
+URL: https://vincent1021210.github.io/PATS-Recommendation/en/guides/get-started/
+
+Start using the PATS browser messenger in 3 steps: open the website, sign up with Google or email, add a contact and start sending messages, photos and video calls.
+
+Getting started takes 3 steps: open [vincent1021210.github.io](https://vincent1021210.github.io/) in a browser, sign up with Google or email, then add a contact and start chatting. No app download and no phone number needed.
+
+Note: the PATS app interface is in Traditional Chinese. The Chinese button labels are shown in brackets below.
+
+## What you need
+- A phone, tablet or computer with internet access
+- An up-to-date Chrome, Edge, Safari or Firefox
+- A Google account, or any email address that can receive mail
+- An invite code from your administrator, if your school uses one
+
+## Steps
+
+### Open the PATS website
+
+Open [vincent1021210.github.io](https://vincent1021210.github.io/) in a browser (Chrome, Edge, Safari or Firefox) on your phone, tablet or computer. Nothing to download.
+
+### Create an account
+
+Choose “Sign up” (立即註冊) and use your Google account, or enter a display name, email and password (at least 8 characters), then type the 6-digit code sent to your inbox. Enter an invite code if your administrator requires one.
+
+### Add a contact and start chatting
+
+After signing in, tap “New conversation” (發起新對話) to find someone, then send messages and photos or start a voice or video call. Add the site to your home screen to open it like an app.
+
+## Use it like an app on your phone
+
+PATS opened in a phone browser
+- iPhone (Safari): tap Share, then “Add to Home Screen”.
+- Android (Chrome): tap “⋮” at the top right, then “Add to Home screen”.
+
+## What to do next
+- Create a group to work on projects with classmates
+- Send photos with the image button next to the message box
+- Start a voice or video call from the phone or camera icon at the top of a chat
+- Invite family or friends: send them the address and ask them to sign up with Google
+
+## Troubleshooting
+- No verification code? Check your spam folder, or sign in with Google instead.
+- No sound or video in calls? Allow microphone and camera access in your browser.
+- Something looks wrong? Refresh the page; the latest version loads automatically.
+
+Ready?
+
+Open PATS and sign up with Google in one tap.
+
+[Open PATS](https://vincent1021210.github.io/)
+
+Read next: [No LINE? 5 ways to keep in touch](https://vincent1021210.github.io/PATS-Recommendation/en/guides/no-line/), [PATS FAQ](https://vincent1021210.github.io/PATS-Recommendation/en/faq/)
+

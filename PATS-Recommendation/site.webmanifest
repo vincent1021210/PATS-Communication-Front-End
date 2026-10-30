@@ -1,0 +1,23 @@
+{
+  "name": "PATS 網頁通訊",
+  "short_name": "PATS",
+  "description": "PATS 是免費、免安裝的網頁通訊工具，用瀏覽器登入就能私訊、建群組、傳照片和語音視訊通話，不需要 LINE 或手機號碼。",
+  "lang": "zh-Hant",
+  "start_url": "/PATS-Recommendation/",
+  "scope": "/PATS-Recommendation/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/PATS-Recommendation/assets/img/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/PATS-Recommendation/assets/img/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
